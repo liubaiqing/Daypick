@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/constants.dart';
+import '../../domain/event_source_type.dart';
 import 'tables.dart';
 
 part 'database.g.dart';
