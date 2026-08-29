@@ -15,6 +15,7 @@ import '../../data/llm/openai_compatible_client.dart';
 import '../../domain/llm_providers.dart';
 import '../../shared/design/ds_button.dart';
 import '../../shared/design/ds_dropdown.dart';
+import '../../shared/design/ds_switch.dart';
 import '../../shared/design/ds_text_field.dart';
 import '../../shared/design/ds_tokens.dart';
 import '../../shared/design/dstokens_scope.dart';
@@ -36,6 +37,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _obscureKey = true;
   bool _testing = false;
   bool _dataBusy = false;
+  bool _animationsEnabled = true;
   String? _testResult; // null=未测试, 'ok'=成功, 其他=失败信息
   LlmProviderPreset? _selectedPreset; // null = 自定义
 
@@ -58,15 +60,26 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final base = await dao.get(kSettingLlmBaseUrl) ?? kDefaultLlmBaseUrl;
     final key = await dao.get(kSettingLlmApiKey) ?? '';
     final model = await dao.get(kSettingLlmModel) ?? kDefaultLlmModel;
+    final anims = await dao.get(kSettingAnimationsEnabled);
     if (!mounted) return;
     setState(() {
       _baseUrlCtrl.text = base;
       _apiKeyCtrl.text = key;
       _modelCtrl.text = model;
+      _animationsEnabled = anims != '0';
       // 按 baseURL 反查预设回显；未匹配视为自定义
       _selectedPreset = presetForBaseUrl(base);
       _loaded = true;
     });
+  }
+
+  Future<void> _toggleAnimations(bool enabled) async {
+    setState(() => _animationsEnabled = enabled);
+    await ref.read(settingsDaoProvider).set(
+      kSettingAnimationsEnabled,
+      enabled ? '1' : '0',
+    );
+    ref.invalidate(animationsEnabledProvider);
   }
 
   Future<void> _save() async {
@@ -197,6 +210,42 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
         ),
         const SizedBox(height: 16),
+
+        // ---- 外观 ----
+        _SectionCard(
+          title: '外观',
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '启用界面动画',
+                      style: TextStyle(
+                        fontSize: kFontSizeBody,
+                        color: tokens.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '日期聚焦动画、侧边栏收起与弹层过渡（关闭以适配低性能设备）',
+                      style: TextStyle(
+                        fontSize: kFontSizeSmall,
+                        color: tokens.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              DSSwitch(
+                value: _animationsEnabled,
+                onChanged: _toggleAnimations,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
 
         // ---- AI 服务 ----
         _SectionCard(

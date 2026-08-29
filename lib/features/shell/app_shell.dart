@@ -48,6 +48,8 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    final animOn = ref.watch(animationsEnabledProvider).value ?? true;
+    final sidebarDuration = animOn ? kDurationNormal : Duration.zero;
     // 主题 token 由 CalendarApp 的 MaterialApp.builder 提供（覆盖 Navigator 与全部弹层）
     return DropTarget(
       // 全窗口拖拽图片：路径写入 provider，由日历页输入条消费（文档 8 章调整）
@@ -74,7 +76,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                     children: [
                       // 侧边栏（可收起，带平滑动画；收起时 child 由外层裁剪）
                       AnimatedContainer(
-                        duration: kDurationNormal,
+                        duration: sidebarDuration,
                         curve: Curves.easeOut,
                         width: _sidebarCollapsed ? 0 : 220,
                         clipBehavior: Clip.hardEdge,
@@ -101,7 +103,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                   ),
                   // 收起把手：overlay 覆盖在交界线上，不占布局空间（无空白）
                   AnimatedPositioned(
-                    duration: kDurationNormal,
+                    duration: sidebarDuration,
                     curve: Curves.easeOut,
                     // 条带中心对齐交界线（侧边栏宽度/0），收起后贴左缘
                     left: _sidebarCollapsed ? 0 : 220 - 12,
@@ -111,6 +113,7 @@ class _AppShellState extends ConsumerState<AppShell> {
                       key: const ValueKey('sidebar-toggle'),
                       collapsed: _sidebarCollapsed,
                       onToggle: _toggleSidebar,
+                      duration: animOn ? kDurationQuick : Duration.zero,
                     ),
                   ),
                 ],
@@ -131,10 +134,14 @@ class _SidebarToggle extends StatefulWidget {
     super.key,
     required this.collapsed,
     required this.onToggle,
+    required this.duration,
   });
 
   final bool collapsed;
   final VoidCallback onToggle;
+
+  /// 动画时长（动画开关关闭时为 Duration.zero）
+  final Duration duration;
 
   @override
   State<_SidebarToggle> createState() => _SidebarToggleState();
@@ -155,7 +162,7 @@ class _SidebarToggleState extends State<_SidebarToggle> {
           child: IgnorePointer(
             ignoring: !_hovered, // 隐藏时不可点
             child: AnimatedOpacity(
-              duration: kDurationQuick,
+              duration: widget.duration,
               opacity: _hovered ? 1 : 0,
               child: GestureDetector(
                 onTap: widget.onToggle,
