@@ -24,15 +24,16 @@ void main() {
       expect(e.start, DateTime(2026, 9, 15));
     });
 
-    test('绝对日期-无年份 已过取明年（就近未来）', () async {
+    test('绝对日期-无年份 默认当前系统年（已过不自动顺延）', () async {
       final e = (await parseOne('3月15日 出差')).single;
-      expect(e.start, DateTime(2027, 3, 15));
+      expect(e.start, DateTime(2026, 3, 15));
+      expect(e.isPastDate(now), isTrue); // 已过由 UI 提示，不偏移到明年
     });
 
-    test('跨年边界：年末取明年', () async {
+    test('跨年边界：无年份固定当前年', () async {
       final p = LocalParser(now: () => DateTime(2026, 12, 20, 10, 0));
       final e = (await p.parse('1月5日 体检')).single;
-      expect(e.start, DateTime(2027, 1, 5));
+      expect(e.start, DateTime(2026, 1, 5));
     });
 
     test('闰年 2 月 29 日有效', () async {
@@ -114,7 +115,7 @@ void main() {
     test('介词锚点+关键词截断', () async {
       final e = (await parseOne('3月15日下午2点去上海虹桥机场出差')).single;
       expect(e.location, '上海虹桥机场');
-      expect(e.start, DateTime(2027, 3, 15, 14, 0));
+      expect(e.start, DateTime(2026, 3, 15, 14, 0));
     });
 
     test('在+地点短语', () async {

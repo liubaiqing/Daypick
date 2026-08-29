@@ -239,8 +239,6 @@ class LocalParser implements EventParser {
   // ------------------------------------------------------------ 日期解析
 
   DateTime? _resolveDate(String text, DateTime now) {
-    final today = DateTime(now.year, now.month, now.day);
-
     final abs = absoluteDate.firstMatch(text);
     if (abs != null) {
       final hasYear = abs.namedGroup('year') != null;
@@ -248,13 +246,10 @@ class LocalParser implements EventParser {
       final month = int.parse(abs.namedGroup('month')!);
       final day = int.parse(abs.namedGroup('day')!);
       if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-      var dt = DateTime(year, month, day);
+      final dt = DateTime(year, month, day);
       // 溢出日期（如 2月30日、2026年2月29日）视为无效（闰年校验）
       if (dt.day != day || dt.month != month) return null;
-      // 无年份且已过 → 取明年（就近未来，文档 5.2 节）
-      if (!hasYear && dt.isBefore(today)) {
-        dt = DateTime(year + 1, month, day);
-      }
+      // 无年份一律取当前系统年（文档 5.2 节）；已过日期保留，由 UI"日期已过"提示兜底
       return dt;
     }
 
