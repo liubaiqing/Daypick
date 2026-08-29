@@ -8,7 +8,7 @@ import 'package:drift/drift.dart' hide Column, Table;
 
 import '../../data/db/database.dart';
 import '../../data/db/providers.dart';
-import '../../data/db/tables.dart';
+import '../../domain/event_source_type.dart';
 import '../../shared/design/ds_button.dart';
 import '../../shared/design/ds_date_picker.dart';
 import '../../shared/design/ds_dialog.dart';

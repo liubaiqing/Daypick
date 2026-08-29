@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/db/database.dart';
 import '../../data/db/providers.dart';
-import '../../data/db/tables.dart';
+import '../../domain/event_source_type.dart';
 import '../../shared/design/ds_button.dart';
 import '../../shared/design/ds_dialog.dart';
 import '../../shared/design/ds_tokens.dart';

@@ -3,8 +3,7 @@ library;
 
 import 'package:drift/drift.dart';
 
-/// 事件来源：文本解析 / 图片 OCR 解析 / 手动创建
-enum EventSourceType { text, image, manual }
+import '../../domain/event_source_type.dart';
 
 /// 事件表：库中只存用户已确认的事件（文档 4.3 节）
 class Events extends Table {
