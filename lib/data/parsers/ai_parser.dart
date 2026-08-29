@@ -22,19 +22,25 @@ class AiConfig {
 }
 
 class AiParser implements EventParser {
-  AiParser({required this.client, required this.config});
-
   final LlmGateway client;
   final AiConfig config;
 
-  /// system prompt（文档 6.2 节）：要求严格按 JSON Schema 输出
-  static const String systemPrompt =
-      '你是日历信息抽取助手。从用户文本中抽取全部事件，严格按以下 JSON 格式输出：'
+  /// 可注入时钟便于测试（与 LocalParser 一致）
+  final DateTime Function() _now;
+
+  AiParser({required this.client, required this.config, DateTime Function()? now})
+      : _now = now ?? DateTime.now;
+
+  /// system prompt（文档 6.2 节）：要求严格按 JSON Schema 输出；
+  /// **注入当前年份并规定：用户未指定年份时一律使用当前年份**
+  String get _systemPrompt =>
+      '你是日历信息抽取助手。今天是${_now().year}年。从用户文本中抽取全部事件，严格按以下 JSON 格式输出：'
       '{"events":[{"title":"字符串，事件标题","location":"地点或null",'
-      '"start":"ISO8601本地时间如2025-03-12T09:00:00，全天事件用当天00:00:00；无法确定时null",'
+      '"start":"ISO8601本地时间如${_now().year}-03-12T09:00:00，全天事件用当天00:00:00；无法确定时null",'
       '"end":"ISO8601或null","all_day":"布尔，无具体时刻为true",'
       '"note":"补充信息或null"}]}。规则：1)时间不确定时start为null而不是猜测；'
-      '2)不输出任何JSON以外的文字；3)地点只取地名，不包含动词。';
+      '2)不输出任何JSON以外的文字；3)地点只取地名，不包含动词；'
+      '4)**用户未在文本中指定年份时，start/end 的年份一律使用当前年份（${_now().year}），不得猜测其他年份**。';
 
   @override
   Future<List<ParsedEvent>> parse(String text) async {
@@ -52,7 +58,7 @@ class AiParser implements EventParser {
         apiKey: config.apiKey,
         model: config.model,
         messages: [
-          const LlmChatMessage(role: 'system', content: systemPrompt),
+          LlmChatMessage(role: 'system', content: _systemPrompt),
           LlmChatMessage(role: 'user', content: text),
         ],
       );
@@ -62,6 +68,39 @@ class AiParser implements EventParser {
 
     return _mapToEvents(json, text);
   }
+
+  /// 解析 AI 返回的日期字符串（客户端兜底，文档 6.2 节）：
+  /// 1) 完整 ISO8601；2) 用户文本无显式年份且年份≠当前年 → 强制当前年；
+  /// 3) 宽松格式（缺年份的 M-d 或 M-dTH:m）→ 补当前年。
+  DateTime? _parseDate(String raw, String sourceText) {
+    final nowYear = _now().year;
+    final dt = DateTime.tryParse(raw);
+    if (dt != null) {
+      if (!_hasExplicitYear(sourceText) && dt.year != nowYear) {
+        return DateTime(
+          nowYear, dt.month, dt.day, dt.hour, dt.minute, dt.second,
+        );
+      }
+      return dt;
+    }
+    // 宽松解析：M-d 或 M-dT H:m（模型可能省略年份）
+    final m = RegExp(
+      r'(\d{1,2})[月/-](\d{1,2})(?:[T\s](\d{1,2}):(\d{2}))?',
+    ).firstMatch(raw);
+    if (m != null) {
+      final month = int.parse(m.group(1)!);
+      final day = int.parse(m.group(2)!);
+      if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+      final hour = m.group(3) != null ? int.parse(m.group(3)!) : 0;
+      final minute = m.group(4) != null ? int.parse(m.group(4)!) : 0;
+      return DateTime(nowYear, month, day, hour, minute);
+    }
+    return null;
+  }
+
+  /// 用户文本是否含显式年份（如 2026年 / 2026- / 2026/）
+  bool _hasExplicitYear(String text) =>
+      RegExp(r'\d{4}\s*[年/-]').hasMatch(text);
 
   List<ParsedEvent> _mapToEvents(Map<String, dynamic> json, String text) {
     final rawList = json['events'];
@@ -77,8 +116,8 @@ class AiParser implements EventParser {
       final startStr = raw['start'] as String?;
       final endStr = raw['end'] as String?;
       final allDay = raw['all_day'] == true;
-      var start = startStr == null ? null : DateTime.tryParse(startStr);
-      var end = endStr == null ? null : DateTime.tryParse(endStr);
+      var start = startStr == null ? null : _parseDate(startStr, text);
+      var end = endStr == null ? null : _parseDate(endStr, text);
       if (allDay) {
         // 全天：start 归零、end 置空（文档 6.2 节）
         start = start == null
