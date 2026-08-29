@@ -107,7 +107,8 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 }
 
-/// 侧边栏边缘把手（macOS 风格胶囊竖条）：点击收起/展开
+/// 侧边栏边缘把手（悬停浮现式）：鼠标靠近右边界线时按钮在边界线中央淡入，
+/// 离开即淡出隐藏；点击收起/展开（文档 9.2 节）。
 class _SidebarToggle extends StatefulWidget {
   const _SidebarToggle({
     super.key,
@@ -128,30 +129,35 @@ class _SidebarToggleState extends State<_SidebarToggle> {
   @override
   Widget build(BuildContext context) {
     final tokens = DSTokensScope.of(context);
-    return Center(
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: Tooltip(
-          message: widget.collapsed ? '展开侧边栏' : '收起侧边栏',
-          child: GestureDetector(
-            onTap: widget.onToggle,
-            child: AnimatedContainer(
+    return MouseRegion(
+      // 触发条带（40px，覆盖边界线两侧）：进入浮现、离开隐藏
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: SizedBox(
+        width: 40,
+        child: Center(
+          child: IgnorePointer(
+            ignoring: !_hovered, // 隐藏时不可点
+            child: AnimatedOpacity(
               duration: kDurationQuick,
-              width: 22,
-              height: 54,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(11),
-                color: _hovered
-                    ? tokens.accentBlue.withValues(alpha: 0.12)
-                    : Colors.transparent,
-              ),
-              child: Icon(
-                widget.collapsed
-                    ? Icons.chevron_right
-                    : Icons.chevron_left,
-                size: 15,
-                color: _hovered ? tokens.accentBlue : tokens.textSecondary,
+              opacity: _hovered ? 1 : 0,
+              child: GestureDetector(
+                onTap: widget.onToggle,
+                child: Container(
+                  width: 22,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(11),
+                    color: tokens.accentBlue.withValues(alpha: 0.12),
+                  ),
+                  child: Icon(
+                    widget.collapsed
+                        ? Icons.chevron_right
+                        : Icons.chevron_left,
+                    size: 15,
+                    color: tokens.accentBlue,
+                  ),
+                ),
               ),
             ),
           ),
