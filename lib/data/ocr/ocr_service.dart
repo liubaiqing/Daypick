@@ -1,19 +1,39 @@
 /// OCR 服务（文档 7 章）：图片预处理（等比缩放 ≤ 2000px）+
-/// Windows.Media.Ocr（经 winrt_ocr_flutter 的 C++/WinRT 封装）。
+/// RapidOCR（ONNX Runtime + PaddleOCR PP-OCRv5 模型，经 flutter_onnx_ocr 封装）。
+/// 跨平台本地离线：Windows/macOS 已验证，Android/iOS 随 onnxruntime_v2 全平台支持扩展。
+/// 注意：非 WinRT API，无需 MSIX 包身份，普通 exe 即可使用。
 library;
 
 import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:winrt_ocr_flutter/winrt_ocr_flutter.dart';
+import 'package:flutter_onnx_ocr/flutter_onnx_ocr.dart';
 
 import '../../core/constants.dart';
 import '../../core/errors.dart';
 
 class OcrService {
-  const OcrService();
+  OcrService();
+
+  /// 模型资源路径（插件自动从 assets 复制到临时目录加载）
+  static const String _detModel = 'assets/models/ch_PP-OCRv5_det_mobile.onnx';
+  static const String _recModel = 'assets/models/ch_PP-OCRv5_rec_mobile.onnx';
+  static const String _dictPath = 'assets/models/ch_ppocrv5_dict.txt';
+
+  Future<void>? _initFuture;
+
+  /// 懒初始化（首次识别时加载模型，约 1–2 秒）
+  Future<void> _ensureInitialized() {
+    return _initFuture ??= FlutterOnnxOcr.initialize(
+      detectionModelPath: _detModel,
+      recognitionModelPath: _recModel,
+      characterDictPath: _dictPath,
+    ).catchError((Object e) {
+      _initFuture = null; // 初始化失败允许重试
+      throw OcrException('OCR 模型加载失败：$e');
+    });
+  }
 
   /// 识别本地图片文件（png/jpg/bmp），返回纯文本；失败抛 [OcrException]。
   Future<String> recognizeFile(String path) async {
@@ -24,28 +44,18 @@ class OcrService {
     return recognizeBytes(await file.readAsBytes());
   }
 
-  /// 识别图片字节；先解码并按最长边缩放（文档 7.2 节），再写入临时文件交原生引擎。
+  /// 识别图片字节；先等比缩放（文档 7.2 节），再交 RapidOCR 推理。
   Future<String> recognizeBytes(Uint8List bytes) async {
+    await _ensureInitialized();
     final scaled = await _scaleImage(bytes);
-
-    // 插件只接受本地文件路径，写临时 PNG
-    final dir = await getTemporaryDirectory();
-    final tmp = File(
-      '${dir.path}${Platform.pathSeparator}ocr_input_'
-      '${DateTime.now().millisecondsSinceEpoch}.png',
-    );
-    await tmp.writeAsBytes(scaled, flush: true);
     try {
-      return await WinrtOcr.recognizeText(tmp.path);
-    } on WinrtOcrException catch (e) {
-      // 引擎级失败（如未安装中文语言包）
-      throw OcrException(e.message);
-    } finally {
-      try {
-        await tmp.delete();
-      } catch (_) {
-        // 临时文件清理失败不影响结果
-      }
+      final results = await FlutterOnnxOcr.recognizeFromBytes(scaled);
+      return results
+          .map((r) => r.text)
+          .where((t) => t.trim().isNotEmpty)
+          .join('\n');
+    } catch (e) {
+      throw OcrException('图片识别失败：$e');
     }
   }
 

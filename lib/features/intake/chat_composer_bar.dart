@@ -58,7 +58,7 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
   final FocusNode _focusNode = FocusNode();
   final LocalParser _localParser = LocalParser();
   final OpenAiCompatibleClient _llmClient = OpenAiCompatibleClient();
-  final OcrService _ocrService = const OcrService();
+  final OcrService _ocrService = OcrService();
 
   final List<String> _attachmentPaths = [];
 
