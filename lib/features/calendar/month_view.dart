@@ -7,11 +7,13 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/db/providers.dart';
 import '../../shared/design/ds_tokens.dart';
 import '../../shared/design/dstokens_scope.dart';
 
-class MonthView extends StatefulWidget {
+class MonthView extends ConsumerStatefulWidget {
   const MonthView({
     super.key,
     required this.month,
@@ -32,10 +34,10 @@ class MonthView extends StatefulWidget {
   final ValueChanged<DateTime> onSelectDay;
 
   @override
-  State<MonthView> createState() => _MonthViewState();
+  ConsumerState<MonthView> createState() => _MonthViewState();
 }
 
-class _MonthViewState extends State<MonthView>
+class _MonthViewState extends ConsumerState<MonthView>
     with SingleTickerProviderStateMixin {
   static const List<String> _weekLabels = ['一', '二', '三', '四', '五', '六', '日'];
 
@@ -90,22 +92,37 @@ class _MonthViewState extends State<MonthView>
 
   // ------------------------------------------------------------ 选中动画
 
+  /// 点击日期入口：开关关闭 → 直接选中；跨月 → 先切月再在新网格播放；
+  /// 同月 → 播放选中动画（全程只有一个聚焦点：动画期间目标格不画静态圆）
   void _handleDayTap(DateTime date) {
     final target = DateUtils.dateOnly(date);
-    // 跨月：直接切换，不播放移动动画（本月聚焦逻辑随网格重建）
-    if (!_isSameMonth(target)) {
+    final animOn = ref.read(animationsEnabledProvider).value ?? true;
+    if (!animOn) {
       _lastAnimated = null;
       widget.onSelectDay(date);
       return;
     }
+    if (!_isSameMonth(target)) {
+      // 跨月：先切换月份，再在新网格坐标系中按"首次"规则播放动画
+      _lastAnimated = null;
+      widget.onSelectDay(date);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _playSelectionAnimation(target);
+      });
+      return;
+    }
+    _playSelectionAnimation(target);
+  }
+
+  void _playSelectionAnimation(DateTime target) {
     final grid = _gridSize;
     if (grid == null) {
-      widget.onSelectDay(date);
+      widget.onSelectDay(target);
       return;
     }
     final to = _gridCenter(target, grid);
     if (to == null) {
-      widget.onSelectDay(date);
+      widget.onSelectDay(target);
       return;
     }
 
@@ -125,7 +142,7 @@ class _MonthViewState extends State<MonthView>
         (from.dy - to.dy).abs() < 0.5;
     // 非首次且位置相同（重复点击同一天）：无动画
     if (sameSpot && !isFirst) {
-      widget.onSelectDay(date);
+      widget.onSelectDay(target);
       return;
     }
 
@@ -134,8 +151,8 @@ class _MonthViewState extends State<MonthView>
     _moveAnim = Tween<Offset>(begin: from, end: to).animate(
       CurvedAnimation(
         parent: _controller,
-        // 首次从今天弹出用回弹曲线；后续移动用平滑曲线
-        curve: isFirst ? Curves.easeOutBack : Curves.easeInOutCubic,
+        // 首次从今天弹出用回弹曲线（灵动）；后续移动用 Apple 风格 emphasized 缓动
+        curve: isFirst ? Curves.easeOutBack : Curves.easeInOutCubicEmphasized,
       ),
     );
     if (sameSpot && isFirst) {
@@ -153,7 +170,7 @@ class _MonthViewState extends State<MonthView>
     _controller.forward().whenCompleteOrCancel(() {
       if (mounted) setState(() => _showCircle = false);
     });
-    widget.onSelectDay(date);
+    widget.onSelectDay(target);
     _lastAnimated = target;
   }
 
@@ -181,25 +198,20 @@ class _MonthViewState extends State<MonthView>
               const SizedBox(width: 12),
               _SmallIconButton(
                 icon: Icons.chevron_left,
-                onTap: () => widget.onSelectDay(
+                onTap: () => _handleDayTap(
                   DateTime(widget.month.year, widget.month.month - 1, 1),
                 ),
               ),
               const SizedBox(width: 4),
               _SmallIconButton(
                 icon: Icons.chevron_right,
-                onTap: () => widget.onSelectDay(
+                onTap: () => _handleDayTap(
                   DateTime(widget.month.year, widget.month.month + 1, 1),
                 ),
               ),
               const Spacer(),
               GestureDetector(
-                onTap: () {
-                  final now = DateTime.now();
-                  widget.onSelectDay(
-                    DateTime(now.year, now.month, now.day),
-                  );
-                },
+                onTap: () => _handleDayTap(DateTime.now()),
                 child: Container(
                   height: 28,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -321,7 +333,8 @@ class _MonthViewState extends State<MonthView>
                         date: date,
                         inMonth: _inMonth(r, c, leading, daysInMonth, cells),
                         isToday: date == today,
-                        isSelected: date == selected,
+                        // 动画期间隐藏静态选中圆：全程只有一个聚焦点（移动圆）
+                        isSelected: date == selected && !_showCircle,
                         eventCount: widget.eventsByDay[date.day] ?? 0,
                         onTap: () => _handleDayTap(date),
                       );
