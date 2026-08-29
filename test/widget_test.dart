@@ -115,6 +115,63 @@ void main() {
     expect(find.byKey(const ValueKey('selection-anim')), findsNothing);
   });
 
+  testWidgets('动画开关关闭时点击日期不产生动画圆', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          monthEventsProvider.overrideWith(
+            (ref, arg) => Stream.value(const <Event>[]),
+          ),
+          dayEventsProvider.overrideWith(
+            (ref, arg) => Stream.value(const <Event>[]),
+          ),
+          animationsEnabledProvider.overrideWith((ref) async => false),
+        ],
+        child: const CalendarApp(),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 50));
+
+    final now = DateTime.now();
+    final key = ValueKey('day-${now.year}-${now.month}-15');
+    await tester.tap(find.byKey(key));
+    await tester.pump(const Duration(milliseconds: 100));
+    // 关闭动画：无移动圆，选中态直接生效
+    expect(find.byKey(const ValueKey('selection-anim')), findsNothing);
+    expect(find.textContaining('${now.month}月15日'), findsOneWidget);
+  });
+
+  testWidgets('跨月点击（补白格）也播放聚焦动画', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          monthEventsProvider.overrideWith(
+            (ref, arg) => Stream.value(const <Event>[]),
+          ),
+          dayEventsProvider.overrideWith(
+            (ref, arg) => Stream.value(const <Event>[]),
+          ),
+        ],
+        child: const CalendarApp(),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 50));
+
+    final now = DateTime.now();
+    final next = DateTime(now.year, now.month + 1, 1);
+    final key = ValueKey('day-${next.year}-${next.month}-${next.day}');
+    if (!tester.any(find.byKey(key))) {
+      return; // 当月无补白格（最后一天为周日）时跳过
+    }
+    await tester.tap(find.byKey(key));
+    await tester.pump(const Duration(milliseconds: 50)); // 切月帧
+    await tester.pump(const Duration(milliseconds: 50)); // postFrame 动画启动
+    expect(find.byKey(const ValueKey('selection-anim')), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('selection-anim')), findsNothing);
+  });
+
   testWidgets('Ctrl+V 粘贴图片为附件', (tester) async {
     // 放大测试视口：附件出现后输入条变高，避免月视图格子溢出
     await tester.binding.setSurfaceSize(const Size(1200, 800));
