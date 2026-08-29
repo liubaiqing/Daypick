@@ -151,18 +151,25 @@ class _MonthViewState extends ConsumerState<MonthView>
     _moveAnim = Tween<Offset>(begin: from, end: to).animate(
       CurvedAnimation(
         parent: _controller,
-        // 首次从今天弹出用回弹曲线（灵动）；后续移动用 Apple 风格 emphasized 缓动
-        curve: isFirst ? Curves.easeOutBack : Curves.easeInOutCubicEmphasized,
+        // 位置曲线一律无 overshoot（easeOutBack 的 1.275 控制点会让圆越过目标再回弹，
+        // 观感像"没对准后瞬间调整"）；弹动感由缩放弹性承担
+        curve: isFirst ? Curves.easeOutCubic : Curves.easeInOutCubicEmphasized,
       ),
     );
     if (sameSpot && isFirst) {
-      // 原地浮现弹动（本月不含今天 或 点击目标即今天）
+      // 原地浮现弹动（本月不含今天 或 点击目标即今天）：缩放弹性不影响位置
       _scaleAnim = Tween<double>(begin: 0.6, end: 1.0).animate(
         CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
       );
       _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
         CurvedAnimation(parent: _controller, curve: Curves.easeOut),
       );
+    } else if (isFirst) {
+      // 首次移动：轻微缩放弹性（0.92→1 回弹），保持"弹动出发"的灵动感
+      _scaleAnim = Tween<double>(begin: 0.92, end: 1.0).animate(
+        CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
+      );
+      _fadeAnim = null;
     } else {
       _scaleAnim = null;
       _fadeAnim = null;
