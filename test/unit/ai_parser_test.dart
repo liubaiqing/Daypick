@@ -252,5 +252,40 @@ void main() {
       expect(e.start, DateTime(2026, 8, 29, 23));
       expect(e.end, DateTime(2026, 8, 30, 1));
     });
+
+    test('仅提供日：AI 返回缺年月格式 → 补当前年月', () async {
+      final gateway = FakeLlmGateway({
+        'events': [
+          {
+            'title': '开会',
+            'location': null,
+            'start': '15T14:00:00', // 仅日+时间
+            'end': null,
+            'all_day': false,
+            'note': null,
+          },
+        ],
+      });
+      final e = (await parserWith(gateway).parse('15号下午2点开会')).single;
+      expect(e.start, DateTime(2026, 8, 15, 14));
+    });
+
+    test('仅提供日：纯数字（无时间）→ 补当前年月', () async {
+      final gateway = FakeLlmGateway({
+        'events': [
+          {
+            'title': '体检',
+            'location': null,
+            'start': '31',
+            'end': null,
+            'all_day': true,
+            'note': null,
+          },
+        ],
+      });
+      final e = (await parserWith(gateway).parse('31号体检')).single;
+      expect(e.start, DateTime(2026, 8, 31));
+      expect(e.allDay, isTrue);
+    });
   });
 }

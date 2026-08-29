@@ -104,6 +104,34 @@ void main() {
       expect(e.start, DateTime(2026, 8, 30));
     });
 
+    test('仅提供日 → 年月取系统当前（15号=本月15日）', () async {
+      final e = (await parseOne('15号下午2点开会')).single;
+      expect(e.start, DateTime(2026, 8, 15, 14, 0));
+    });
+
+    test('仅提供日-全天', () async {
+      final e = (await parseOne('3号全天搬家')).single;
+      expect(e.start, DateTime(2026, 8, 3));
+      expect(e.allDay, isTrue);
+    });
+
+    test('仅提供日-当月月末有效', () async {
+      final e = (await parseOne('31号体检')).single;
+      expect(e.start, DateTime(2026, 8, 31));
+    });
+
+    test('仅提供日-当月无此日则无效（4月31日）', () async {
+      final p = LocalParser(now: () => DateTime(2026, 4, 20, 10, 0));
+      final e = (await p.parse('31号开会')).single;
+      expect(e.start, isNull);
+      expect(e.hasMissingTime, isTrue);
+    });
+
+    test('绝对日期优先于仅日（3月15日不被误拆）', () async {
+      final e = (await parseOne('3月15日下午2点出差')).single;
+      expect(e.start, DateTime(2026, 3, 15, 14, 0));
+    });
+
     test('过去日期（昨天）可解析且提示', () async {
       final e = (await parseOne('昨天开会')).single;
       expect(e.start, DateTime(2026, 8, 28));
