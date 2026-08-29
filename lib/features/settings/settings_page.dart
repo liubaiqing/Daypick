@@ -12,7 +12,9 @@ import '../../data/db/providers.dart';
 import '../../data/export/backup_service.dart';
 import '../../data/export/ics_exporter.dart';
 import '../../data/llm/openai_compatible_client.dart';
+import '../../domain/llm_providers.dart';
 import '../../shared/design/ds_button.dart';
+import '../../shared/design/ds_dropdown.dart';
 import '../../shared/design/ds_segmented_control.dart';
 import '../../shared/design/ds_text_field.dart';
 import '../../shared/design/ds_tokens.dart';
@@ -37,6 +39,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _testing = false;
   bool _dataBusy = false;
   String? _testResult; // null=未测试, 'ok'=成功, 其他=失败信息
+  LlmProviderPreset? _selectedPreset; // null = 自定义
 
   @override
   void initState() {
@@ -64,6 +67,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       _baseUrlCtrl.text = base;
       _apiKeyCtrl.text = key;
       _modelCtrl.text = model;
+      // 按 baseURL 反查预设回显；未匹配视为自定义
+      _selectedPreset = presetForBaseUrl(base);
       _loaded = true;
     });
   }
@@ -241,10 +246,44 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              DSTextField(
-                controller: _baseUrlCtrl,
-                hintText: 'baseURL',
+              Text(
+                '供应商',
+                style: TextStyle(
+                  fontSize: kFontSizeSmall,
+                  color: tokens.textSecondary,
+                ),
               ),
+              const SizedBox(height: 4),
+              DSDropdown<LlmProviderPreset?>(
+                value: _selectedPreset,
+                hintText: '请选择供应商',
+                onChanged: (preset) => setState(() {
+                  _selectedPreset = preset;
+                  _testResult = null;
+                  if (preset != null) {
+                    // 选中预设自动回填 baseURL 与默认模型（文档 11 章）
+                    _baseUrlCtrl.text = preset.baseUrl;
+                    _modelCtrl.text = preset.defaultModel;
+                  }
+                }),
+                items: [
+                  for (final p in kLlmProviderPresets)
+                    DSDropdownItem<LlmProviderPreset?>(
+                      value: p,
+                      label: p.name,
+                      subtitle: p.baseUrl,
+                    ),
+                  const DSDropdownItem<LlmProviderPreset?>(
+                    value: null,
+                    label: '自定义',
+                    subtitle: '手动填写 baseURL',
+                  ),
+                ],
+              ),
+              if (_selectedPreset == null) ...[
+                const SizedBox(height: 10),
+                DSTextField(controller: _baseUrlCtrl, hintText: 'baseURL'),
+              ],
               const SizedBox(height: 10),
               DSTextField(
                 controller: _apiKeyCtrl,
