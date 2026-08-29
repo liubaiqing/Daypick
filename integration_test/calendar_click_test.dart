@@ -63,6 +63,9 @@ void main() {
     expect(find.text('新建事件'), findsNothing);
 
     // 4) 主界面输入条：输入文本 → 发送 → 结果面板 → 关闭（丢弃草稿）
+    // 显式切回本地模式：parseMode 持久化在真实数据库中，用户可能切过 AI
+    await tester.tap(find.text('本地'), warnIfMissed: false);
+    await tester.pump(const Duration(milliseconds: 100));
     await tester.enterText(
       find.byType(TextField).last,
       '明天上午10点开会',
