@@ -9,6 +9,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pasteboard/pasteboard.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../core/constants.dart';
 import '../../core/errors.dart';
@@ -59,6 +61,9 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
   final OcrService _ocrService = const OcrService();
 
   final List<String> _attachmentPaths = [];
+
+  /// 粘贴生成的临时图片文件（删除附件时一并清理；用户选择/拖拽的文件不清理）
+  final Set<String> _pasteTempFiles = {};
   String _mode = kParseModeLocal;
   bool _busy = false;
   String? _error;
@@ -77,9 +82,58 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
 
   @override
   void dispose() {
+    // 清理粘贴生成的临时图片
+    for (final p in _pasteTempFiles) {
+      File(p).delete().ignore();
+    }
     _textCtrl.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  // ------------------------------------------------------------ 粘贴（Ctrl+V）
+
+  /// Ctrl+V：剪贴板为图片 → 作为附件加入；为文本 → 手动粘贴（覆盖选区）
+  Future<void> _handlePaste() async {
+    if (_busy) return;
+    try {
+      final imageBytes = await Pasteboard.image;
+      if (imageBytes != null && imageBytes.isNotEmpty) {
+        final dir = await getTemporaryDirectory();
+        final file = File(
+          '${dir.path}${Platform.pathSeparator}pasted_'
+          '${DateTime.now().millisecondsSinceEpoch}.png',
+        );
+        await file.writeAsBytes(imageBytes, flush: true);
+        if (!mounted) return;
+        setState(() {
+          _attachmentPaths.add(file.path);
+          _pasteTempFiles.add(file.path);
+          _error = null;
+        });
+        return;
+      }
+      final text = await Pasteboard.text;
+      if (text == null || text.isEmpty || !mounted) return;
+      _insertText(text);
+    } catch (e) {
+      _showError('粘贴失败：$e');
+    }
+  }
+
+  void _insertText(String text) {
+    final value = _textCtrl.value;
+    final selection = value.selection;
+    if (!selection.isValid) {
+      _textCtrl.text = text;
+      return;
+    }
+    final newText =
+        value.text.replaceRange(selection.start, selection.end, text);
+    _textCtrl.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: selection.start + text.length),
+    );
   }
 
   // ------------------------------------------------------------ 附件
@@ -123,7 +177,12 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
   }
 
   void _removeAttachment(int index) {
+    final path = _attachmentPaths[index];
     setState(() => _attachmentPaths.removeAt(index));
+    // 粘贴生成的临时文件随附件删除而清理
+    if (_pasteTempFiles.remove(path)) {
+      File(path).delete().ignore();
+    }
   }
 
   // ------------------------------------------------------------ 解析
@@ -265,6 +324,7 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
                       children: [
                         for (var i = 0; i < _attachmentPaths.length; i++)
                           _AttachmentThumb(
+                            key: ValueKey('attachment-$i'),
                             path: _attachmentPaths[i],
                             onRemove: _busy
                                 ? null
@@ -283,32 +343,43 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
                       onTap: _busy ? null : _pickImages,
                     ),
                     const SizedBox(width: 8),
-                    // 文本输入
+                    // 文本输入（Ctrl+V 经 PasteTextIntent 拦截：图片→附件，文本→手动粘贴；
+                    // 回车发送、Shift+Enter 换行）
                     Expanded(
-                      child: Focus(
-                        onKeyEvent: _handleKey,
-                        child: TextField(
-                          controller: _textCtrl,
-                          focusNode: _focusNode,
-                          enabled: !_busy,
-                          minLines: 1,
-                          maxLines: 4,
-                          keyboardType: TextInputType.multiline,
-                          style: TextStyle(
-                            fontSize: kFontSizeBody,
-                            color: tokens.textPrimary,
+                      child: Actions(
+                        actions: {
+                          PasteTextIntent: CallbackAction<PasteTextIntent>(
+                            onInvoke: (intent) {
+                              _handlePaste();
+                              return null;
+                            },
                           ),
-                          decoration: InputDecoration(
-                            hintText: '输入包含时间、地点、事务的内容，或上传图片…',
-                            hintStyle: TextStyle(
+                        },
+                        child: Focus(
+                          onKeyEvent: _handleKey,
+                          child: TextField(
+                            controller: _textCtrl,
+                            focusNode: _focusNode,
+                            enabled: !_busy,
+                            minLines: 1,
+                            maxLines: 4,
+                            keyboardType: TextInputType.multiline,
+                            style: TextStyle(
                               fontSize: kFontSizeBody,
-                              color: tokens.textSecondary
-                                  .withValues(alpha: 0.6),
+                              color: tokens.textPrimary,
                             ),
-                            border: InputBorder.none,
-                            isCollapsed: true,
-                            contentPadding:
-                                const EdgeInsets.symmetric(vertical: 8),
+                            decoration: InputDecoration(
+                              hintText: '输入包含时间、地点、事务的内容，或上传图片…',
+                              hintStyle: TextStyle(
+                                fontSize: kFontSizeBody,
+                                color: tokens.textSecondary
+                                    .withValues(alpha: 0.6),
+                              ),
+                              border: InputBorder.none,
+                              isCollapsed: true,
+                              contentPadding:
+                                  const EdgeInsets.symmetric(vertical: 8),
+                            ),
                           ),
                         ),
                       ),
@@ -420,7 +491,7 @@ class _ComposerIconButtonState extends State<_ComposerIconButton> {
 
 /// 图片附件缩略图 + 右上角删除
 class _AttachmentThumb extends StatelessWidget {
-  const _AttachmentThumb({required this.path, required this.onRemove});
+  const _AttachmentThumb({super.key, required this.path, required this.onRemove});
 
   final String path;
   final VoidCallback? onRemove;
