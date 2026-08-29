@@ -62,7 +62,7 @@ class _AppShellState extends State<AppShell> {
   }
 }
 
-/// 自绘标题栏：拖拽区 + 红黄绿交通灯（文档 9.1 节）
+/// 自绘标题栏：拖拽区（双击最大化）+ 右上角 Windows 风格窗口按钮（文档 9.1 节）
 class _TitleBar extends StatelessWidget {
   const _TitleBar();
 
@@ -74,13 +74,18 @@ class _TitleBar extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onPanStart: (_) => windowManager.startDragging(),
+        onDoubleTap: () async {
+          if (await windowManager.isMaximized()) {
+            await windowManager.unmaximize();
+          } else {
+            await windowManager.maximize();
+          }
+        },
         child: ColoredBox(
           color: tokens.sidebarBackground,
           child: Row(
             children: [
-              const SizedBox(width: 12),
-              const _TrafficLightBar(),
-              const Spacer(),
+              const SizedBox(width: 16),
               Text(
                 kAppName,
                 style: TextStyle(
@@ -89,8 +94,8 @@ class _TitleBar extends StatelessWidget {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              // 右侧留白使标题居中于窗口
-              const SizedBox(width: 12 + 3 * 12 + 2 * 8 + 12),
+              const Spacer(),
+              const _WindowControls(),
             ],
           ),
         ),
@@ -99,64 +104,28 @@ class _TitleBar extends StatelessWidget {
   }
 }
 
-/// 交通灯按钮组（关闭 / 最小化 / 最大化）
-class _TrafficLightBar extends StatelessWidget {
-  const _TrafficLightBar();
+/// Windows 风格窗口按钮组（右上角：最小化 / 最大化还原 / 关闭）
+class _WindowControls extends StatefulWidget {
+  const _WindowControls();
 
   @override
-  Widget build(BuildContext context) {
-    return const Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _TrafficLightButton(
-          color: Color(0xFFFF5F57),
-          hoverColor: Color(0xFFE0443E),
-          glyph: '×',
-          action: _WindowAction.close,
-        ),
-        SizedBox(width: 8),
-        _TrafficLightButton(
-          color: Color(0xFFFEBC2E),
-          hoverColor: Color(0xFFD89E24),
-          glyph: '−',
-          action: _WindowAction.minimize,
-        ),
-        SizedBox(width: 8),
-        _TrafficLightButton(
-          color: Color(0xFF28C840),
-          hoverColor: Color(0xFF1EAA32),
-          glyph: '+',
-          action: _WindowAction.maximize,
-        ),
-      ],
-    );
+  State<_WindowControls> createState() => _WindowControlsState();
+}
+
+class _WindowControlsState extends State<_WindowControls> {
+  bool _maximized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    windowManager.addListener(_WindowListener(
+      onMaximize: () => setState(() => _maximized = true),
+      onUnmaximize: () => setState(() => _maximized = false),
+    ));
   }
-}
 
-enum _WindowAction { close, minimize, maximize }
-
-class _TrafficLightButton extends StatefulWidget {
-  const _TrafficLightButton({
-    required this.color,
-    required this.hoverColor,
-    required this.glyph,
-    required this.action,
-  });
-
-  final Color color;
-  final Color hoverColor;
-  final String glyph;
-  final _WindowAction action;
-
-  @override
-  State<_TrafficLightButton> createState() => _TrafficLightButtonState();
-}
-
-class _TrafficLightButtonState extends State<_TrafficLightButton> {
-  bool _hovered = false;
-
-  Future<void> _handleTap() async {
-    switch (widget.action) {
+  Future<void> _handleTap(_WindowAction action) async {
+    switch (action) {
       case _WindowAction.close:
         await windowManager.close();
       case _WindowAction.minimize:
@@ -172,30 +141,95 @@ class _TrafficLightButtonState extends State<_TrafficLightButton> {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: _handleTap,
-        child: Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: _hovered ? widget.hoverColor : widget.color,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _WindowButton(
+          icon: Icons.remove,
+          tooltip: '最小化',
+          action: _WindowAction.minimize,
+          onTap: () => _handleTap(_WindowAction.minimize),
+        ),
+        _WindowButton(
+          icon: _maximized ? Icons.filter_none : Icons.crop_square,
+          tooltip: _maximized ? '还原' : '最大化',
+          action: _WindowAction.maximize,
+          onTap: () => _handleTap(_WindowAction.maximize),
+        ),
+        _WindowButton(
+          icon: Icons.close,
+          tooltip: '关闭',
+          action: _WindowAction.close,
+          onTap: () => _handleTap(_WindowAction.close),
+          danger: true,
+        ),
+      ],
+    );
+  }
+}
+
+class _WindowListener extends WindowListener {
+  _WindowListener({required this.onMaximize, required this.onUnmaximize});
+
+  final VoidCallback onMaximize;
+  final VoidCallback onUnmaximize;
+
+  @override
+  void onWindowMaximize() => onMaximize();
+
+  @override
+  void onWindowUnmaximize() => onUnmaximize();
+}
+
+enum _WindowAction { close, minimize, maximize }
+
+/// 单个窗口按钮：标准 46×32 命中区；hover 提亮；关闭按钮 hover 红底白字
+class _WindowButton extends StatefulWidget {
+  const _WindowButton({
+    required this.icon,
+    required this.tooltip,
+    required this.action,
+    required this.onTap,
+    this.danger = false,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final _WindowAction action;
+  final VoidCallback onTap;
+  final bool danger;
+
+  @override
+  State<_WindowButton> createState() => _WindowButtonState();
+}
+
+class _WindowButtonState extends State<_WindowButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = DSTokensScope.of(context);
+    final bg = widget.danger && _hovered
+        ? const Color(0xFFE81123) // Windows 关闭按钮 hover 红
+        : _hovered
+            ? tokens.textPrimary.withValues(alpha: 0.06)
+            : Colors.transparent;
+    final fg = widget.danger && _hovered
+        ? Colors.white
+        : tokens.textPrimary.withValues(alpha: 0.75);
+    return Tooltip(
+      message: widget.tooltip,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: Container(
+            width: 46,
+            height: 38,
+            color: bg,
+            child: Icon(widget.icon, size: 12, color: fg),
           ),
-          alignment: Alignment.center,
-          child: _hovered
-              ? Text(
-                  widget.glyph,
-                  style: const TextStyle(
-                    fontSize: 9,
-                    height: 1,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                )
-              : null,
         ),
       ),
     );
