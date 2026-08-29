@@ -39,8 +39,8 @@ add_definitions(-DUNICODE -D_UNICODE)
 # of modifying this function.
 function(APPLY_STANDARD_SETTINGS TARGET)
   target_compile_features(${TARGET} PUBLIC cxx_std_17)
-  # /utf-8：插件源码可能含 UTF-8 字符（如 winrt_ocr_flutter 头文件的破折号），
-  # 在 GBK 等本地代码页下会触发 C4819 并被 /WX 视为错误；统一按 UTF-8 解释源码。
+  # /utf-8：插件源码可能含 UTF-8 字符（此前 winrt_ocr_flutter 头文件在 GBK
+  # 代码页触发 C4819 并被 /WX 视为错误）；统一按 UTF-8 解释源码，任何语言环境构建稳定。
   target_compile_options(${TARGET} PRIVATE /W4 /WX /wd"4100" /utf-8)
   target_compile_options(${TARGET} PRIVATE /EHsc)
   target_compile_definitions(${TARGET} PRIVATE "_HAS_EXCEPTIONS=0")
