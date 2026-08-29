@@ -140,6 +140,9 @@ class _MonthViewState extends ConsumerState<MonthView>
       final todayCenter =
           _isSameMonth(today) ? _gridCenter(today, grid) : null;
       from = todayCenter ?? to;
+    } else if (_controller.isAnimating && _moveAnim != null) {
+      // 快速连续点击：上一动画仍在播放时，从其当前插值位置续接，避免跳回起点
+      from = _moveAnim!.value;
     } else {
       from = _gridCenter(last, grid) ?? to;
     }
@@ -179,7 +182,10 @@ class _MonthViewState extends ConsumerState<MonthView>
       _scaleAnim = null;
       _fadeAnim = null;
     }
-    _controller.forward().whenCompleteOrCancel(() {
+    // 注意：必须用 whenComplete 而非 whenCompleteOrCancel——
+    // 快速连续点击时 reset() 会取消前一个动画，whenCompleteOrCancel 在取消时
+    // 也会回调，导致 _showCircle 被提前置 false，后续动画圆不再渲染
+    _controller.forward().whenComplete(() {
       if (mounted) setState(() => _showCircle = false);
     });
     widget.onSelectDay(target);
