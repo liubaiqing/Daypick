@@ -1,0 +1,48 @@
+# ============================================================
+# Calendar 项目 git 忽略规则
+# 原则：git 只记录代码与文档；用户数据、密钥、构建产物一律不入库。
+# 说明：pubspec.lock 属于应用类项目，应提交入库（锁定依赖版本），故不在此忽略。
+# ============================================================
+
+# ---- Flutter / Dart 构建产物 ----
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+
+# ---- Windows 桌面生成物 ----
+windows/flutter/ephemeral/
+windows/runner/Release/
+
+# ---- IDE / 编辑器 ----
+.idea/
+*.iml
+.vscode/
+*.suo
+
+# ---- 操作系统杂项 ----
+Thumbs.db
+.DS_Store
+
+# ---- 用户数据（数据库与备份文件，数据与代码分离）----
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.ics
+*.db
+backups/
+
+# ---- 密钥与敏感配置（API Key 等）----
+.env
+*.key
+*.pem
+llm_key.txt
+secrets.json
+
+# ---- 发布产物 ----
+release/
+dist/
+*.msix
+*.msixbundle
