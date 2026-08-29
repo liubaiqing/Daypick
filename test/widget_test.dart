@@ -4,6 +4,8 @@
 import 'package:calendar/app/app.dart';
 import 'package:calendar/data/db/database.dart';
 import 'package:calendar/data/db/providers.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -37,5 +39,46 @@ void main() {
     expect(find.text('今天'), findsOneWidget);
     expect(find.text('一'), findsOneWidget);
     expect(find.text('日'), findsOneWidget);
+  });
+
+  testWidgets('侧边栏把手悬停浮现，点击可收起与展开', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          monthEventsProvider.overrideWith(
+            (ref, arg) => Stream.value(const <Event>[]),
+          ),
+          dayEventsProvider.overrideWith(
+            (ref, arg) => Stream.value(const <Event>[]),
+          ),
+        ],
+        child: const CalendarApp(),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.text('日历'), findsOneWidget);
+
+    // 模拟鼠标移入把手触发区（按钮浮现）
+    final gesture = await tester.createGesture(
+      kind: PointerDeviceKind.mouse,
+    );
+    await gesture.addPointer(location: Offset.zero);
+    addTearDown(gesture.removePointer);
+    final toggleFinder = find.byKey(const ValueKey('sidebar-toggle'));
+    await gesture.moveTo(tester.getCenter(toggleFinder));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // 点击收起：导航项消失
+    await tester.tap(toggleFinder);
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.text('日历'), findsNothing);
+
+    // 收起后把手左移，鼠标移到新位置再次浮现并展开
+    await gesture.moveTo(tester.getCenter(toggleFinder));
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tap(toggleFinder);
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.text('日历'), findsOneWidget);
   });
 }
