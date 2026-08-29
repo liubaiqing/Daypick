@@ -115,6 +115,36 @@ void main() {
     expect(find.byKey(const ValueKey('selection-anim')), findsNothing);
   });
 
+  testWidgets('快速连续点击时动画持续存在（不被中途取消隐藏）', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          monthEventsProvider.overrideWith(
+            (ref, arg) => Stream.value(const <Event>[]),
+          ),
+          dayEventsProvider.overrideWith(
+            (ref, arg) => Stream.value(const <Event>[]),
+          ),
+        ],
+        child: const CalendarApp(),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 50));
+
+    final now = DateTime.now();
+    final k1 = ValueKey('day-${now.year}-${now.month}-10');
+    final k2 = ValueKey('day-${now.year}-${now.month}-20');
+    await tester.tap(find.byKey(k1));
+    await tester.pump(const Duration(milliseconds: 80)); // 动画播放中
+    await tester.tap(find.byKey(k2));
+    await tester.pump(const Duration(milliseconds: 50)); // 新动画进行中
+    // 回归：动画圆必须仍可见（此前 reset 取消旧动画会把圆隐藏）
+    expect(find.byKey(const ValueKey('selection-anim')), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('selection-anim')), findsNothing);
+  });
+
   testWidgets('动画开关关闭时点击日期不产生动画圆', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
