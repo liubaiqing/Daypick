@@ -1,5 +1,5 @@
 name: calendar
-description: "A new Flutter project."
+description: "Windows 桌面端关键事务日历：文本/图片解析为结构化事件，确认后写入本地日历。技术文档见 技术开发文档.md。"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -28,13 +28,18 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  dio: ^5.11.0
+  drift: ^2.34.3
+  file_picker: ^11.0.3
   flutter:
     sdk: flutter
-
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
-
+  flutter_riverpod: ^3.4.2
+  intl: ^0.20.3
+  pasteboard: ^0.5.0
+  path: ^1.9.1
+  path_provider: ^2.1.6
+  window_manager: ^0.5.2
+  winrt_ocr_flutter: ^0.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -45,6 +50,8 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  drift_dev: ^2.34.5
+  build_runner: ^2.16.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
