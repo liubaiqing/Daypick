@@ -1,57 +1,70 @@
-/// 应用外壳：自绘标题栏（交通灯窗口按钮）+ 侧边栏导航 + 内容区。
+/// 应用外壳：自绘标题栏（右上角窗口按钮）+ 侧边栏导航 + 内容区；全窗口图片拖拽上传。
 /// 对应技术开发文档第 9.1 / 9.2 节。
 library;
 
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../core/constants.dart';
 import '../../shared/design/ds_tokens.dart';
 import '../../shared/design/dstokens_scope.dart';
 import '../calendar/calendar_page.dart';
-import '../intake/intake_page.dart';
+import '../intake/chat_composer_bar.dart';
 import '../settings/settings_page.dart';
 
-enum _NavItem { calendar, intake, settings }
+enum _NavItem { calendar, settings }
 
-class AppShell extends StatefulWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 
   @override
-  State<AppShell> createState() => _AppShellState();
+  ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends ConsumerState<AppShell> {
   _NavItem _current = _NavItem.calendar;
 
   @override
   Widget build(BuildContext context) {
     // 主题 token 由 CalendarApp 的 MaterialApp.builder 提供（覆盖 Navigator 与全部弹层）
-    return ColoredBox(
-      color: DSTokensScope.of(context).mainBackground,
-      child: Column(
-        children: [
-          const _TitleBar(),
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _Sidebar(
-                  current: _current,
-                  onSelect: (item) => setState(() => _current = item),
-                ),
-                Container(width: 1, color: DSTokensScope.of(context).divider),
-                Expanded(
-                  child: switch (_current) {
-                    _NavItem.calendar => const CalendarPage(),
-                    _NavItem.intake => const IntakePage(),
-                    _NavItem.settings => const SettingsPage(),
-                  },
-                ),
-              ],
+    return DropTarget(
+      // 全窗口拖拽图片：路径写入 provider，由日历页输入条消费（文档 8 章调整）
+      onDragDone: (details) {
+        final paths = [
+          for (final f in details.files)
+            if (f.path.isNotEmpty) f.path,
+        ];
+        if (paths.isNotEmpty) {
+          ref.read(droppedImagesProvider.notifier).set(paths);
+        }
+      },
+      child: ColoredBox(
+        color: DSTokensScope.of(context).mainBackground,
+        child: Column(
+          children: [
+            const _TitleBar(),
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _Sidebar(
+                    current: _current,
+                    onSelect: (item) => setState(() => _current = item),
+                  ),
+                  Container(width: 1, color: DSTokensScope.of(context).divider),
+                  Expanded(
+                    child: switch (_current) {
+                      _NavItem.calendar => const CalendarPage(),
+                      _NavItem.settings => const SettingsPage(),
+                    },
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -265,13 +278,6 @@ class _Sidebar extends StatelessWidget {
                 label: '日历',
                 selected: current == _NavItem.calendar,
                 onTap: () => onSelect(_NavItem.calendar),
-              ),
-              const SizedBox(height: 2),
-              _NavTile(
-                icon: Icons.note_add_outlined,
-                label: '新建',
-                selected: current == _NavItem.intake,
-                onTap: () => onSelect(_NavItem.intake),
               ),
               const SizedBox(height: 2),
               _NavTile(

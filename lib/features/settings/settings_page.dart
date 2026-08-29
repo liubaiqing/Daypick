@@ -15,7 +15,6 @@ import '../../data/llm/openai_compatible_client.dart';
 import '../../domain/llm_providers.dart';
 import '../../shared/design/ds_button.dart';
 import '../../shared/design/ds_dropdown.dart';
-import '../../shared/design/ds_segmented_control.dart';
 import '../../shared/design/ds_text_field.dart';
 import '../../shared/design/ds_tokens.dart';
 import '../../shared/design/dstokens_scope.dart';
@@ -33,7 +32,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final TextEditingController _modelCtrl = TextEditingController();
   final OpenAiCompatibleClient _client = OpenAiCompatibleClient();
 
-  String _parseMode = kDefaultParseMode;
   bool _loaded = false;
   bool _obscureKey = true;
   bool _testing = false;
@@ -57,13 +55,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<void> _load() async {
     final dao = ref.read(settingsDaoProvider);
-    final mode = await dao.get(kSettingParseMode) ?? kDefaultParseMode;
     final base = await dao.get(kSettingLlmBaseUrl) ?? kDefaultLlmBaseUrl;
     final key = await dao.get(kSettingLlmApiKey) ?? '';
     final model = await dao.get(kSettingLlmModel) ?? kDefaultLlmModel;
     if (!mounted) return;
     setState(() {
-      _parseMode = mode;
       _baseUrlCtrl.text = base;
       _apiKeyCtrl.text = key;
       _modelCtrl.text = model;
@@ -75,7 +71,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<void> _save() async {
     final dao = ref.read(settingsDaoProvider);
-    await dao.set(kSettingParseMode, _parseMode);
     await dao.set(kSettingLlmBaseUrl, _baseUrlCtrl.text.trim());
     await dao.set(kSettingLlmApiKey, _apiKeyCtrl.text.trim());
     await dao.set(kSettingLlmModel, _modelCtrl.text.trim());
@@ -202,43 +197,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
         ),
         const SizedBox(height: 16),
-
-        // ---- 解析 ----
-        _SectionCard(
-          title: '解析',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '默认解析模式（输入页可临时切换）',
-                style: TextStyle(
-                  fontSize: kFontSizeBody,
-                  color: tokens.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              DSSegmentedControl(
-                options: const [
-                  (label: '本地解析', enabled: true, tooltip: null),
-                  (label: 'AI 解析', enabled: true, tooltip: null),
-                ],
-                selectedIndex: _parseMode == kParseModeAi ? 1 : 0,
-                onChanged: (i) => setState(
-                  () => _parseMode = i == 0 ? kParseModeLocal : kParseModeAi,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '本地解析：离线规则引擎，无需网络；AI 解析：调用大模型，需要 API Key。',
-                style: TextStyle(
-                  fontSize: kFontSizeSmall,
-                  color: tokens.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
 
         // ---- AI 服务 ----
         _SectionCard(

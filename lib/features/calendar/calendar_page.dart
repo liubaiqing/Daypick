@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/db/database.dart';
 import '../../data/db/providers.dart';
 import '../../shared/design/dstokens_scope.dart';
+import '../intake/chat_composer_bar.dart';
 import 'month_view.dart';
 import 'today_list.dart';
 
@@ -60,14 +61,22 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
               Expanded(flex: 3, child: month),
               Container(height: 1, color: tokens.divider),
               Expanded(flex: 2, child: list),
+              const ChatComposerBar(),
             ],
           );
         }
-        return Row(
+        return Column(
           children: [
-            Expanded(child: month),
-            Container(width: 1, color: tokens.divider),
-            SizedBox(width: 320, child: list),
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(child: month),
+                  Container(width: 1, color: tokens.divider),
+                  SizedBox(width: 320, child: list),
+                ],
+              ),
+            ),
+            const ChatComposerBar(),
           ],
         );
       },
