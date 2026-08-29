@@ -9,9 +9,10 @@ import '../../core/constants.dart';
 import '../../shared/design/ds_tokens.dart';
 import '../../shared/design/dstokens_scope.dart';
 import '../calendar/calendar_page.dart';
+import '../intake/intake_page.dart';
 import '../settings/settings_page.dart';
 
-enum _NavItem { calendar, settings }
+enum _NavItem { calendar, intake, settings }
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -47,6 +48,7 @@ class _AppShellState extends State<AppShell> {
                   Expanded(
                     child: switch (_current) {
                       _NavItem.calendar => const CalendarPage(),
+                      _NavItem.intake => const IntakePage(),
                       _NavItem.settings => const SettingsPage(),
                     },
                   ),
@@ -224,6 +226,13 @@ class _Sidebar extends StatelessWidget {
                 label: '日历',
                 selected: current == _NavItem.calendar,
                 onTap: () => onSelect(_NavItem.calendar),
+              ),
+              const SizedBox(height: 2),
+              _NavTile(
+                icon: Icons.note_add_outlined,
+                label: '新建',
+                selected: current == _NavItem.intake,
+                onTap: () => onSelect(_NavItem.intake),
               ),
               const SizedBox(height: 2),
               _NavTile(
