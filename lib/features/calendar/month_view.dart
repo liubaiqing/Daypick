@@ -140,19 +140,21 @@ class MonthView extends StatelessWidget {
               children: [
                 for (var c = 0; c < 7; c++)
                   Expanded(
-                    child: _DayCell(
-                      date: _dateAt(r, c, leading, daysInMonth),
-                      inMonth: _inMonth(r, c, leading, daysInMonth),
-                      isToday: _dateAt(r, c, leading, daysInMonth) == today,
-                      isSelected: _dateAt(r, c, leading, daysInMonth) == selected,
-                      eventCount: eventsByDay[
-                              _dateAt(r, c, leading, daysInMonth).day] ??
-                          0,
-                      onTap: () =>
-                          onSelectDay(_dateAt(r, c, leading, daysInMonth)),
-                      onDoubleTap: () =>
-                          onNewEvent(_dateAt(r, c, leading, daysInMonth)),
-                    ),
+                    child: Builder(builder: (context) {
+                      final date = _dateAt(r, c, leading, daysInMonth);
+                      return _DayCell(
+                        key: ValueKey(
+                          'day-${date.year}-${date.month}-${date.day}',
+                        ),
+                        date: date,
+                        inMonth: _inMonth(r, c, leading, daysInMonth),
+                        isToday: date == today,
+                        isSelected: date == selected,
+                        eventCount: eventsByDay[date.day] ?? 0,
+                        onTap: () => onSelectDay(date),
+                        onDoubleTap: () => onNewEvent(date),
+                      );
+                    }),
                   ),
               ],
             ),
@@ -185,6 +187,7 @@ class MonthView extends StatelessWidget {
 
 class _DayCell extends StatelessWidget {
   const _DayCell({
+    super.key,
     required this.date,
     required this.inMonth,
     required this.isToday,

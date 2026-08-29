@@ -23,10 +23,14 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
   DateTime _selectedDay = DateUtils.dateOnly(DateTime.now());
 
   void _handleSelectDay(DateTime day) {
+    final newDay = DateUtils.dateOnly(day);
+    final newMonth = DateTime(day.year, day.month);
+    // 无实际变化时跳过重建，避免快速点击时无谓的流订阅抖动
+    if (newDay == _selectedDay && newMonth == _month) return;
     setState(() {
-      _selectedDay = DateUtils.dateOnly(day);
+      _selectedDay = newDay;
       // 点击跨月日期时自动切换月份（文档 10.1 节）
-      _month = DateTime(day.year, day.month);
+      _month = newMonth;
     });
   }
 

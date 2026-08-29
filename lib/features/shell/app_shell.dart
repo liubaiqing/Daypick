@@ -26,37 +26,32 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final brightness = MediaQuery.platformBrightnessOf(context);
-    final tokens =
-        brightness == Brightness.dark ? DSTokens.dark : DSTokens.light;
-    return DSTokensScope(
-      tokens: tokens,
-      child: ColoredBox(
-        color: tokens.mainBackground,
-        child: Column(
-          children: [
-            const _TitleBar(),
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _Sidebar(
-                    current: _current,
-                    onSelect: (item) => setState(() => _current = item),
-                  ),
-                  Container(width: 1, color: tokens.divider),
-                  Expanded(
-                    child: switch (_current) {
-                      _NavItem.calendar => const CalendarPage(),
-                      _NavItem.intake => const IntakePage(),
-                      _NavItem.settings => const SettingsPage(),
-                    },
-                  ),
-                ],
-              ),
+    // 主题 token 由 CalendarApp 的 MaterialApp.builder 提供（覆盖 Navigator 与全部弹层）
+    return ColoredBox(
+      color: DSTokensScope.of(context).mainBackground,
+      child: Column(
+        children: [
+          const _TitleBar(),
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _Sidebar(
+                  current: _current,
+                  onSelect: (item) => setState(() => _current = item),
+                ),
+                Container(width: 1, color: DSTokensScope.of(context).divider),
+                Expanded(
+                  child: switch (_current) {
+                    _NavItem.calendar => const CalendarPage(),
+                    _NavItem.intake => const IntakePage(),
+                    _NavItem.settings => const SettingsPage(),
+                  },
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
