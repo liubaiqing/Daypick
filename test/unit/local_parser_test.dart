@@ -214,6 +214,21 @@ void main() {
         throwsA(isA<LocalParseException>()),
       );
     });
+
+    test('【】标题行不含时间 → 不产生事件（通知类文档）', () async {
+      final events = await parseOne(
+        '【通知2】关于朴诚书院2026级新生接待工作的培训通知\n'
+        '兹定于8月30日(周日)上午10:00，在朴诚书院A栋1楼活动室召开培训会。',
+      );
+      expect(events, hasLength(1));
+      expect(events.single.title, '培训会');
+      expect(events.single.start, DateTime(2026, 8, 30, 10, 0));
+    });
+
+    test('【】开头但含时间（会议纪要）→ 正常解析', () async {
+      final e = (await parseOne('【会议纪要】明天开会')).single;
+      expect(e.start, DateTime(2026, 8, 30));
+    });
   });
 
   group('置信度（文档 5.6 节）', () {
