@@ -90,6 +90,8 @@ const double kRadiusButton = 6;
 const double kRadiusTextField = 8;
 const double kRadiusCard = 12;
 const double kRadiusDialog = 14;
+const double kRadiusComposer = 22; // 主界面输入条（胶囊形）
+const double kRadiusPanel = 14; // 解析结果面板
 
 // ---- 阴影（见文档 9.5 节）----
 const double kShadowCardOpacity = 0.08;
