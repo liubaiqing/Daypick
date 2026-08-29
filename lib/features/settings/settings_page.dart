@@ -1,11 +1,16 @@
 /// 设置页（文档 11 章）：解析模式、LLM 配置（含测试连接）、数据管理（M4 接入）、关于。
 library;
 
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants.dart';
 import '../../data/db/providers.dart';
+import '../../data/export/backup_service.dart';
+import '../../data/export/ics_exporter.dart';
 import '../../data/llm/openai_compatible_client.dart';
 import '../../shared/design/ds_button.dart';
 import '../../shared/design/ds_segmented_control.dart';
@@ -30,6 +35,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _loaded = false;
   bool _obscureKey = true;
   bool _testing = false;
+  bool _dataBusy = false;
   String? _testResult; // null=未测试, 'ok'=成功, 其他=失败信息
 
   @override
@@ -101,6 +107,74 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         _testing = false;
         _testResult = '连接失败：$e';
       });
+    }
+  }
+
+  Future<void> _exportIcs() async {
+    final path = await FilePicker.saveFile(
+      dialogTitle: '导出 ics',
+      fileName: 'calendar_events.ics',
+      type: FileType.custom,
+      allowedExtensions: ['ics'],
+    );
+    if (path == null) return;
+    final events = await ref.read(eventDaoProvider).getAll();
+    final content = const IcsExporter().build(events);
+    await File(path).writeAsString(content);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('已导出 ${events.length} 条事件：$path')),
+    );
+  }
+
+  Future<void> _exportBackup() async {
+    final path = await FilePicker.saveFile(
+      dialogTitle: '导出 JSON 备份',
+      fileName: 'calendar_backup.json',
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+    );
+    if (path == null) return;
+    final content = await BackupService(ref.read(eventDaoProvider)).exportJson();
+    await File(path).writeAsString(content);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('JSON 备份已导出（不含 API Key）')),
+    );
+  }
+
+  Future<void> _restoreBackup() async {
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+    );
+    final path = result?.files.single.path;
+    if (path == null) return;
+    setState(() => _dataBusy = true);
+    try {
+      final content = await File(path).readAsString();
+      final summary =
+          await BackupService(ref.read(eventDaoProvider)).restoreJson(content);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '恢复完成：新增 ${summary.restored} 条，跳过 ${summary.skipped} 条',
+          ),
+        ),
+      );
+    } on FormatException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('恢复失败：${e.message}')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('恢复失败：$e')),
+      );
+    } finally {
+      if (mounted) setState(() => _dataBusy = false);
     }
   }
 
@@ -239,28 +313,33 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         // ---- 数据管理 ----
         _SectionCard(
           title: '数据管理',
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              DSButton(
-                label: '导出 ics',
-                kind: DSButtonKind.secondary,
-                onPressed: null, // M4 接入
+              Row(
+                children: [
+                  DSButton(
+                    label: '导出 ics',
+                    kind: DSButtonKind.secondary,
+                    onPressed: _dataBusy ? null : _exportIcs,
+                  ),
+                  const SizedBox(width: 8),
+                  DSButton(
+                    label: '导出 JSON 备份',
+                    kind: DSButtonKind.secondary,
+                    onPressed: _dataBusy ? null : _exportBackup,
+                  ),
+                  const SizedBox(width: 8),
+                  DSButton(
+                    label: '恢复备份',
+                    kind: DSButtonKind.secondary,
+                    onPressed: _dataBusy ? null : _restoreBackup,
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              DSButton(
-                label: '导出 JSON 备份',
-                kind: DSButtonKind.secondary,
-                onPressed: null, // M4 接入
-              ),
-              const SizedBox(width: 8),
-              DSButton(
-                label: '恢复备份',
-                kind: DSButtonKind.secondary,
-                onPressed: null, // M4 接入
-              ),
-              const SizedBox(width: 8),
+              const SizedBox(height: 6),
               Text(
-                '（M4 提供）',
+                '导出文件保存在你选择的位置；恢复按 id 合并，已存在的事件跳过。备份不含 API Key。',
                 style: TextStyle(
                   fontSize: kFontSizeSmall,
                   color: tokens.textSecondary,

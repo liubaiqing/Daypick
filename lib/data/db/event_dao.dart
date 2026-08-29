@@ -45,4 +45,11 @@ class EventDao {
   /// 删除事件
   Future<int> deleteEvent(int id) =>
       (_db.delete(_db.events)..where((t) => t.id.equals(id))).go();
+
+  /// 全量事件（ics/JSON 导出用，文档 12 章）
+  Future<List<Event>> getAll() => _db.select(_db.events).get();
+
+  /// 按 id 查询（JSON 恢复合并去重用）
+  Future<Event?> getById(int id) =>
+      (_db.select(_db.events)..where((t) => t.id.equals(id))).getSingleOrNull();
 }
