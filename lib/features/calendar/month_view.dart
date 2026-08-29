@@ -1,4 +1,9 @@
 /// 月视图（文档 10.1 节）：自绘 7 列网格，周一起始，今日蓝圈、事件圆点。
+/// 选中聚焦动画（文档 10.1 节补充）：
+/// - 首次点击：本月含今天 → 浅蓝圆从今天位置弹动到点击处；
+///   本月不含今天 → 浅蓝圆在点击处原地浮现弹动；
+/// - 后续点击：浅蓝圆从上一位置丝滑移动到新位置；
+/// - 跨月切换（翻页/补白日期）不播放移动动画，直接切换。
 library;
 
 import 'package:flutter/material.dart';
@@ -6,7 +11,7 @@ import 'package:flutter/material.dart';
 import '../../shared/design/ds_tokens.dart';
 import '../../shared/design/dstokens_scope.dart';
 
-class MonthView extends StatelessWidget {
+class MonthView extends StatefulWidget {
   const MonthView({
     super.key,
     required this.month,
@@ -26,7 +31,133 @@ class MonthView extends StatelessWidget {
 
   final ValueChanged<DateTime> onSelectDay;
 
+  @override
+  State<MonthView> createState() => _MonthViewState();
+}
+
+class _MonthViewState extends State<MonthView>
+    with SingleTickerProviderStateMixin {
   static const List<String> _weekLabels = ['一', '二', '三', '四', '五', '六', '日'];
+
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 380),
+  );
+
+  Animation<Offset>? _moveAnim;
+  Animation<double>? _scaleAnim;
+  Animation<double>? _fadeAnim;
+  DateTime? _lastAnimated; // 网格内上一次动画目标（"从上一位置移动"用）
+  Size? _gridSize;
+  bool _showCircle = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  // ------------------------------------------------------------ 网格几何
+
+  int get _leading {
+    final first = DateTime(widget.month.year, widget.month.month, 1);
+    return first.weekday - 1;
+  }
+
+  int get _daysInMonth =>
+      DateTime(widget.month.year, widget.month.month + 1, 0).day;
+
+  int get _rows => ((_leading + _daysInMonth) / 7).ceil();
+
+  bool _isSameMonth(DateTime date) =>
+      date.year == widget.month.year && date.month == widget.month.month;
+
+  /// 日期在本网格中的格子中心坐标（含补白格）；不在网格返回 null
+  Offset? _gridCenter(DateTime date, Size grid) {
+    final first = DateTime(widget.month.year, widget.month.month, 1);
+    final diff = DateUtils.dateOnly(date)
+        .difference(DateUtils.dateOnly(first))
+        .inDays;
+    final idx = _leading + diff;
+    if (idx < 0 || idx >= _rows * 7) return null;
+    final col = idx % 7;
+    final row = idx ~/ 7;
+    return Offset(
+      (col + 0.5) * grid.width / 7,
+      (row + 0.5) * grid.height / _rows,
+    );
+  }
+
+  // ------------------------------------------------------------ 选中动画
+
+  void _handleDayTap(DateTime date) {
+    final target = DateUtils.dateOnly(date);
+    // 跨月：直接切换，不播放移动动画（本月聚焦逻辑随网格重建）
+    if (!_isSameMonth(target)) {
+      _lastAnimated = null;
+      widget.onSelectDay(date);
+      return;
+    }
+    final grid = _gridSize;
+    if (grid == null) {
+      widget.onSelectDay(date);
+      return;
+    }
+    final to = _gridCenter(target, grid);
+    if (to == null) {
+      widget.onSelectDay(date);
+      return;
+    }
+
+    final last = _lastAnimated;
+    final isFirst = last == null;
+    Offset? from;
+    if (isFirst) {
+      // 首次：本月含今天 → 从今天位置弹出；否则原地浮现
+      final today = DateUtils.dateOnly(DateTime.now());
+      final todayCenter =
+          _isSameMonth(today) ? _gridCenter(today, grid) : null;
+      from = todayCenter ?? to;
+    } else {
+      from = _gridCenter(last, grid) ?? to;
+    }
+    final sameSpot = (from.dx - to.dx).abs() < 0.5 &&
+        (from.dy - to.dy).abs() < 0.5;
+    // 非首次且位置相同（重复点击同一天）：无动画
+    if (sameSpot && !isFirst) {
+      widget.onSelectDay(date);
+      return;
+    }
+
+    setState(() => _showCircle = true);
+    _controller.reset();
+    _moveAnim = Tween<Offset>(begin: from, end: to).animate(
+      CurvedAnimation(
+        parent: _controller,
+        // 首次从今天弹出用回弹曲线；后续移动用平滑曲线
+        curve: isFirst ? Curves.easeOutBack : Curves.easeInOutCubic,
+      ),
+    );
+    if (sameSpot && isFirst) {
+      // 原地浮现弹动（本月不含今天 或 点击目标即今天）
+      _scaleAnim = Tween<double>(begin: 0.6, end: 1.0).animate(
+        CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
+      );
+      _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+      );
+    } else {
+      _scaleAnim = null;
+      _fadeAnim = null;
+    }
+    _controller.forward().whenCompleteOrCancel(() {
+      if (mounted) setState(() => _showCircle = false);
+    });
+    widget.onSelectDay(date);
+    _lastAnimated = target;
+  }
+
+  // ------------------------------------------------------------ UI
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +171,7 @@ class MonthView extends StatelessWidget {
           child: Row(
             children: [
               Text(
-                '${month.year}年${month.month}月',
+                '${widget.month.year}年${widget.month.month}月',
                 style: TextStyle(
                   fontSize: kFontSizeLargeTitle,
                   fontWeight: FontWeight.w700,
@@ -50,22 +181,24 @@ class MonthView extends StatelessWidget {
               const SizedBox(width: 12),
               _SmallIconButton(
                 icon: Icons.chevron_left,
-                onTap: () => onSelectDay(
-                  DateTime(month.year, month.month - 1, 1),
+                onTap: () => widget.onSelectDay(
+                  DateTime(widget.month.year, widget.month.month - 1, 1),
                 ),
               ),
               const SizedBox(width: 4),
               _SmallIconButton(
                 icon: Icons.chevron_right,
-                onTap: () => onSelectDay(
-                  DateTime(month.year, month.month + 1, 1),
+                onTap: () => widget.onSelectDay(
+                  DateTime(widget.month.year, widget.month.month + 1, 1),
                 ),
               ),
               const Spacer(),
               GestureDetector(
                 onTap: () {
                   final now = DateTime.now();
-                  onSelectDay(DateTime(now.year, now.month, now.day));
+                  widget.onSelectDay(
+                    DateTime(now.year, now.month, now.day),
+                  );
                 },
                 child: Container(
                   height: 28,
@@ -80,7 +213,7 @@ class MonthView extends StatelessWidget {
                     style: TextStyle(
                       fontSize: kFontSizeBody,
                       color: tokens.accentBlue,
-                      fontWeight: FontWeight.w400,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
@@ -108,8 +241,52 @@ class MonthView extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        // 网格
-        Expanded(child: _buildGrid(tokens)),
+        // 网格 + 选中聚焦动画层
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              _gridSize = Size(constraints.maxWidth, constraints.maxHeight);
+              return Stack(
+                children: [
+                  _buildGrid(tokens),
+                  // 移动中的浅蓝选中圆（到达后由目标格自身选中态接管）
+                  AnimatedBuilder(
+                    animation: _controller,
+                    builder: (context, _) {
+                      if (!_showCircle || _moveAnim == null) {
+                        return const SizedBox.shrink();
+                      }
+                      final pos = _moveAnim!.value;
+                      final scale = _scaleAnim?.value ?? 1.0;
+                      final opacity = _fadeAnim?.value ?? 1.0;
+                      return Positioned(
+                        key: const ValueKey('selection-anim'),
+                        left: pos.dx - 13,
+                        top: pos.dy - 13,
+                        width: 26,
+                        height: 26,
+                        child: Opacity(
+                          opacity: opacity,
+                          child: Transform.scale(
+                            alignment: Alignment.center,
+                            scale: scale,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: tokens.accentBlue
+                                    .withValues(alpha: 0.12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
       ],
     );
   }
@@ -118,15 +295,14 @@ class MonthView extends StatelessWidget {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final selected = DateTime(
-      selectedDay.year,
-      selectedDay.month,
-      selectedDay.day,
+      widget.selectedDay.year,
+      widget.selectedDay.month,
+      widget.selectedDay.day,
     );
-    final first = DateTime(month.year, month.month, 1);
-    final leading = first.weekday - 1;
-    final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
+    final leading = _leading;
+    final daysInMonth = _daysInMonth;
+    final rows = _rows;
     final cells = leading + daysInMonth;
-    final rows = (cells / 7).ceil();
 
     return Column(
       children: [
@@ -143,11 +319,11 @@ class MonthView extends StatelessWidget {
                           'day-${date.year}-${date.month}-${date.day}',
                         ),
                         date: date,
-                        inMonth: _inMonth(r, c, leading, daysInMonth),
+                        inMonth: _inMonth(r, c, leading, daysInMonth, cells),
                         isToday: date == today,
                         isSelected: date == selected,
-                        eventCount: eventsByDay[date.day] ?? 0,
-                        onTap: () => onSelectDay(date),
+                        eventCount: widget.eventsByDay[date.day] ?? 0,
+                        onTap: () => _handleDayTap(date),
                       );
                     }),
                   ),
@@ -158,7 +334,7 @@ class MonthView extends StatelessWidget {
     );
   }
 
-  bool _inMonth(int r, int c, int leading, int daysInMonth) {
+  bool _inMonth(int r, int c, int leading, int daysInMonth, int cells) {
     final idx = r * 7 + c;
     return idx >= leading && idx < leading + daysInMonth;
   }
@@ -166,17 +342,21 @@ class MonthView extends StatelessWidget {
   DateTime _dateAt(int r, int c, int leading, int daysInMonth) {
     final idx = r * 7 + c;
     if (idx < leading) {
-      final prev = DateTime(month.year, month.month, 0).day;
-      return DateTime(month.year, month.month - 1, prev - leading + idx + 1);
+      final prev = DateTime(widget.month.year, widget.month.month, 0).day;
+      return DateTime(
+        widget.month.year,
+        widget.month.month - 1,
+        prev - leading + idx + 1,
+      );
     }
     if (idx >= leading + daysInMonth) {
       return DateTime(
-        month.year,
-        month.month + 1,
+        widget.month.year,
+        widget.month.month + 1,
         idx - leading - daysInMonth + 1,
       );
     }
-    return DateTime(month.year, month.month, idx - leading + 1);
+    return DateTime(widget.month.year, widget.month.month, idx - leading + 1);
   }
 }
 
@@ -275,9 +455,8 @@ class _DayCellState extends State<_DayCell> {
                         height: 4,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: widget.eventCount > 0
-                              ? dotColor
-                              : Colors.transparent,
+                          color:
+                              widget.eventCount > 0 ? dotColor : Colors.transparent,
                         ),
                       ),
                     ],
