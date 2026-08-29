@@ -392,9 +392,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         // ---- 关于 ----
         _SectionCard(
           title: '关于',
-          child: Text(
-            'calendar v1.0.0+1 · Windows 桌面关键事务日历',
-            style: TextStyle(fontSize: kFontSizeBody, color: tokens.textPrimary),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'calendar v1.0.4+1 · Windows 桌面关键事务日历',
+                style: TextStyle(
+                  fontSize: kFontSizeBody,
+                  color: tokens.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '本应用使用 HarmonyOS Sans 字体（华为开源字体，免费商用；许可协议见随包 LICENSE 文件）',
+                style: TextStyle(
+                  fontSize: kFontSizeSmall,
+                  color: tokens.textSecondary,
+                ),
+              ),
+            ],
           ),
         ),
       ],

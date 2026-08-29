@@ -22,11 +22,10 @@ class CalendarApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.light,
-        // 字体策略（文档 9.3 节）：拉丁/数字用 Segoe UI Variable（Win11）/Segoe UI（Win10），
-        // 中文回退微软雅黑；只使用 400/700 真实字重，避免合成加粗
-        fontFamily: 'Segoe UI Variable',
+        // 字体策略（文档 9.3 节）：HarmonyOS Sans SC 一款字体覆盖中英文，
+        // 避免混排割裂；只使用 400/700 真实字重，避免合成加粗
+        fontFamily: 'HarmonyOS Sans SC',
         fontFamilyFallback: const [
-          'Segoe UI',
           'Microsoft YaHei UI',
           'Microsoft YaHei',
         ],
@@ -36,9 +35,8 @@ class CalendarApp extends StatelessWidget {
       ),
       darkTheme: ThemeData(
         brightness: Brightness.dark,
-        fontFamily: 'Segoe UI Variable',
+        fontFamily: 'HarmonyOS Sans SC',
         fontFamilyFallback: const [
-          'Segoe UI',
           'Microsoft YaHei UI',
           'Microsoft YaHei',
         ],
