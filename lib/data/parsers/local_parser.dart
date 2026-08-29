@@ -154,7 +154,11 @@ class LocalParser implements EventParser {
     // ---- 2. 日期（绝对优先，其次相对；分段无日期时共享全局日期） ----
     final isAllDayWord = allDayWord.hasMatch(text);
     var date = _resolveDate(text, now);
-    if (date == null) date = sharedDate;
+    date ??= sharedDate;
+    if (date == null && isAllDayWord) {
+      // "全天"无日期 → 默认今天（文档 5.2 节缺省规则）
+      date = DateTime(now.year, now.month, now.day);
+    }
     if (date != null) {
       confidence += 0.4; // 有日期视为时间命中（含缺省，文档 5.6 节）
     } else if (startTime != null) {
@@ -176,7 +180,7 @@ class LocalParser implements EventParser {
     if (date == null && !hasKeyword) return null;
     if (hasKeyword) confidence += 0.3; // 事务识别命中（文档 5.6 节）
 
-    final allDay = date != null && startTime == null;
+    final allDay = isAllDayWord || (date != null && startTime == null);
     DateTime? start;
     DateTime? end;
     if (date != null) {
