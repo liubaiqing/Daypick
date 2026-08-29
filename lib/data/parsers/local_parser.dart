@@ -255,6 +255,16 @@ class LocalParser implements EventParser {
 
     final rel = relativeDateWord.firstMatch(text);
     if (rel != null) return _resolveRelativeDate(rel.group(0)!, now);
+    // 仅提供"日"：15号/15日 → 年月取系统当前（文档 5.2 节）
+    final dayOnly = dayOnlyDate.firstMatch(text);
+    if (dayOnly != null) {
+      final day = int.parse(dayOnly.namedGroup('day')!);
+      if (day < 1 || day > 31) return null;
+      final dt = DateTime(now.year, now.month, day);
+      // 当月天数校验（如 4月31日 无效）
+      if (dt.day != day) return null;
+      return dt;
+    }
     return null;
   }
 
@@ -511,6 +521,8 @@ class LocalParser implements EventParser {
     if (date != null) ranges.add((start: date.start, end: date.end));
     final rel = relativeDateWord.firstMatch(text);
     if (rel != null) ranges.add((start: rel.start, end: rel.end));
+    final dayOnly = dayOnlyDate.firstMatch(text);
+    if (dayOnly != null) ranges.add((start: dayOnly.start, end: dayOnly.end));
     final range = timeRange.firstMatch(text);
     if (range != null) {
       ranges.add((start: range.start, end: range.end));

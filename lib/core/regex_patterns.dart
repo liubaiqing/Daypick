@@ -11,6 +11,9 @@ final RegExp relativeDateWord = RegExp(
   r'(今天|明天|后天|大后天|昨天|前天|本周[一二三四五六日天]|下周[一二三四五六日天]|周[一二三四五六日天]|周末)',
 );
 
+/// 仅提供"日"：15号 / 15日（年月默认系统时间，文档 5.2 节）
+final RegExp dayOnlyDate = RegExp(r'(?<day>\d{1,2})\s*[号日]');
+
 /// 时间：时段词 + 数字 + 点/时 + 半/一刻/三刻/数字分
 /// 如：下午3点半 / 15:30 / 晚上8点20分 / 上午9点
 final RegExp timeExpr = RegExp(
