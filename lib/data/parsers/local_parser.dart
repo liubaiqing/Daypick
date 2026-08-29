@@ -111,7 +111,13 @@ class LocalParser implements EventParser {
       (int, String)? best;
       for (final kw in sorted) {
         final idx = text.indexOf(kw, searchFrom);
-        if (idx >= 0 && (best == null || idx < best.$1)) best = (idx, kw);
+        if (idx < 0) continue;
+        // 复合名词排除："会议纪要/会议记录" 中的"会议"不是事务动词
+        final after = idx + kw.length;
+        if (kKeywordExclusions.any((ex) => text.startsWith(ex, after))) {
+          continue;
+        }
+        if (best == null || idx < best.$1) best = (idx, kw);
       }
       if (best == null) break;
       result.add(best);
@@ -127,6 +133,10 @@ class LocalParser implements EventParser {
     DateTime now, {
     DateTime? sharedDate,
   }) {
+    // 标题/引用行过滤：以【开头且不含任何时间信息 → 视为文档标题，不产生事件
+    // （如"【通知2】关于…的培训通知"；"【会议纪要】明天开会"含时间则正常解析）
+    if (text.startsWith('【') && !_gapHasDateTime(text)) return null;
+
     var confidence = 0.0;
 
     // ---- 1. 时间（区间优先） ----
