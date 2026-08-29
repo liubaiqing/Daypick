@@ -13,6 +13,7 @@ const String kSettingParseMode = 'parseMode';
 const String kSettingLlmBaseUrl = 'llmBaseUrl';
 const String kSettingLlmApiKey = 'llmApiKey';
 const String kSettingLlmModel = 'llmModel';
+const String kSettingSidebarCollapsed = 'sidebarCollapsed'; // '1' 收起 / '0' 展开
 
 /// 解析模式取值（settings.parseMode）
 const String kParseModeLocal = 'local';

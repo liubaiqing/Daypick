@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../core/constants.dart';
+import '../../data/db/providers.dart';
 import '../../shared/design/ds_tokens.dart';
 import '../../shared/design/dstokens_scope.dart';
 import '../calendar/calendar_page.dart';
@@ -25,6 +26,25 @@ class AppShell extends ConsumerStatefulWidget {
 
 class _AppShellState extends ConsumerState<AppShell> {
   _NavItem _current = _NavItem.calendar;
+  bool _sidebarCollapsed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 读取上次的侧边栏折叠状态（设置持久化）
+    ref.read(settingsDaoProvider).get(kSettingSidebarCollapsed).then((v) {
+      if (!mounted || v == null) return;
+      setState(() => _sidebarCollapsed = v == '1');
+    });
+  }
+
+  Future<void> _toggleSidebar() async {
+    setState(() => _sidebarCollapsed = !_sidebarCollapsed);
+    await ref.read(settingsDaoProvider).set(
+      kSettingSidebarCollapsed,
+      _sidebarCollapsed ? '1' : '0',
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,9 +69,26 @@ class _AppShellState extends ConsumerState<AppShell> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _Sidebar(
-                    current: _current,
-                    onSelect: (item) => setState(() => _current = item),
+                  // 侧边栏（可收起，带平滑动画；收起时 child 由外层裁剪）
+                  AnimatedContainer(
+                    duration: kDurationNormal,
+                    curve: Curves.easeOut,
+                    width: _sidebarCollapsed ? 0 : 220,
+                    clipBehavior: Clip.hardEdge,
+                    decoration: const BoxDecoration(), // 空装饰：仅为启用裁剪
+                    child: _sidebarCollapsed
+                        ? null
+                        : _Sidebar(
+                            current: _current,
+                            onSelect: (item) =>
+                                setState(() => _current = item),
+                          ),
+                  ),
+                  // 边缘把手：收起/展开
+                  _SidebarToggle(
+                    key: const ValueKey('sidebar-toggle'),
+                    collapsed: _sidebarCollapsed,
+                    onToggle: _toggleSidebar,
                   ),
                   Container(width: 1, color: DSTokensScope.of(context).divider),
                   Expanded(
@@ -64,6 +101,60 @@ class _AppShellState extends ConsumerState<AppShell> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 侧边栏边缘把手（macOS 风格胶囊竖条）：点击收起/展开
+class _SidebarToggle extends StatefulWidget {
+  const _SidebarToggle({
+    super.key,
+    required this.collapsed,
+    required this.onToggle,
+  });
+
+  final bool collapsed;
+  final VoidCallback onToggle;
+
+  @override
+  State<_SidebarToggle> createState() => _SidebarToggleState();
+}
+
+class _SidebarToggleState extends State<_SidebarToggle> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = DSTokensScope.of(context);
+    return Center(
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: Tooltip(
+          message: widget.collapsed ? '展开侧边栏' : '收起侧边栏',
+          child: GestureDetector(
+            onTap: widget.onToggle,
+            child: AnimatedContainer(
+              duration: kDurationQuick,
+              width: 22,
+              height: 54,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(11),
+                color: _hovered
+                    ? tokens.accentBlue.withValues(alpha: 0.12)
+                    : Colors.transparent,
+              ),
+              child: Icon(
+                widget.collapsed
+                    ? Icons.chevron_right
+                    : Icons.chevron_left,
+                size: 15,
+                color: _hovered ? tokens.accentBlue : tokens.textSecondary,
+              ),
+            ),
+          ),
         ),
       ),
     );
