@@ -74,7 +74,10 @@ class _MonthViewState extends ConsumerState<MonthView>
   bool _isSameMonth(DateTime date) =>
       date.year == widget.month.year && date.month == widget.month.month;
 
-  /// 日期在本网格中的格子中心坐标（含补白格）；不在网格返回 null
+  /// 日期在本网格中的格子中心坐标（含补白格）；不在网格返回 null。
+  /// 注意：格子内列内容（26px 圆 + 3px 间距 + 4px 圆点 = 33px）整体垂直居中，
+  /// 圆中心比格子中心高 3.5px——动画终点必须与此一致，否则动画结束切换静态圆时
+  /// 会出现"瞬间上移"的跳变。
   Offset? _gridCenter(DateTime date, Size grid) {
     final first = DateTime(widget.month.year, widget.month.month, 1);
     final diff = DateUtils.dateOnly(date)
@@ -84,9 +87,11 @@ class _MonthViewState extends ConsumerState<MonthView>
     if (idx < 0 || idx >= _rows * 7) return null;
     final col = idx % 7;
     final row = idx ~/ 7;
+    const contentHeight = 26.0 + 3.0 + 4.0; // _DayCell 列内容高度
+    const circleOffset = contentHeight / 2 - 13.0; // 圆中心相对格子中心的上移量
     return Offset(
       (col + 0.5) * grid.width / 7,
-      (row + 0.5) * grid.height / _rows,
+      (row + 0.5) * grid.height / _rows - circleOffset,
     );
   }
 
