@@ -22,12 +22,26 @@ class CalendarApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.light,
+        // 字体策略（文档 9.3 节）：拉丁/数字用 Segoe UI Variable（Win11）/Segoe UI（Win10），
+        // 中文回退微软雅黑；只使用 400/700 真实字重，避免合成加粗
+        fontFamily: 'Segoe UI Variable',
+        fontFamilyFallback: const [
+          'Segoe UI',
+          'Microsoft YaHei UI',
+          'Microsoft YaHei',
+        ],
         splashFactory: NoSplash.splashFactory,
         highlightColor: Colors.transparent,
         hoverColor: Colors.transparent,
       ),
       darkTheme: ThemeData(
         brightness: Brightness.dark,
+        fontFamily: 'Segoe UI Variable',
+        fontFamilyFallback: const [
+          'Segoe UI',
+          'Microsoft YaHei UI',
+          'Microsoft YaHei',
+        ],
         splashFactory: NoSplash.splashFactory,
         highlightColor: Colors.transparent,
         hoverColor: Colors.transparent,

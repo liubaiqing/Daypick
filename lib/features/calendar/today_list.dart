@@ -45,7 +45,7 @@ class TodayList extends ConsumerWidget {
             '${day.month}月${day.day}日 ${_weekNames[day.weekday - 1]}',
             style: TextStyle(
               fontSize: kFontSizeTitle,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
               color: tokens.textPrimary,
             ),
           ),
@@ -134,7 +134,7 @@ class _SectionLabel extends StatelessWidget {
         style: TextStyle(
           fontSize: kFontSizeSmall,
           color: tokens.textSecondary,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
@@ -224,7 +224,7 @@ class _EventRowState extends ConsumerState<_EventRow> {
                         ? tokens.accentBlue
                         : tokens.textPrimary,
                     fontWeight: widget.timeText == null
-                        ? FontWeight.w600
+                        ? FontWeight.w700
                         : FontWeight.w400,
                   ),
                 ),
@@ -241,7 +241,7 @@ class _EventRowState extends ConsumerState<_EventRow> {
                       style: TextStyle(
                         fontSize: kFontSizeBody,
                         color: tokens.textPrimary,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w400,
                       ),
                     ),
                     if (widget.event.location != null &&

@@ -355,7 +355,7 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
                       style: TextStyle(
                         fontSize: kFontSizeBody,
                         color: tokens.successGreen,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w400,
                       ),
                     ),
                     const Spacer(),

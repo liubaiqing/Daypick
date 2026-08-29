@@ -189,7 +189,7 @@ class _IntakePageState extends ConsumerState<IntakePage> {
                 '新建事务',
                 style: TextStyle(
                   fontSize: kFontSizeLargeTitle,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   color: tokens.textPrimary,
                 ),
               ),
@@ -289,7 +289,7 @@ class _IntakePageState extends ConsumerState<IntakePage> {
                   '待确认（$unsavedCount 条未保存）',
                   style: TextStyle(
                     fontSize: kFontSizeCaption,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                     color: tokens.textSecondary,
                   ),
                 ),

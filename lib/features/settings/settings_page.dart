@@ -197,7 +197,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           '设置',
           style: TextStyle(
             fontSize: kFontSizeLargeTitle,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
             color: tokens.textPrimary,
           ),
         ),
@@ -426,7 +426,7 @@ class _SectionCard extends StatelessWidget {
             title,
             style: TextStyle(
               fontSize: kFontSizeCaption,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
               color: tokens.textSecondary,
             ),
           ),

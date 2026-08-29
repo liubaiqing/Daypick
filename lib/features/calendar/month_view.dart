@@ -47,7 +47,7 @@ class MonthView extends StatelessWidget {
                 '${month.year}年${month.month}月',
                 style: TextStyle(
                   fontSize: kFontSizeLargeTitle,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   color: tokens.textPrimary,
                 ),
               ),
@@ -84,7 +84,7 @@ class MonthView extends StatelessWidget {
                     style: TextStyle(
                       fontSize: kFontSizeBody,
                       color: tokens.accentBlue,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 ),
@@ -242,7 +242,7 @@ class _DayCell extends StatelessWidget {
               '${date.day}',
               style: TextStyle(
                 fontSize: kFontSizeBody,
-                fontWeight: isToday ? FontWeight.w600 : FontWeight.w400,
+                fontWeight: isToday ? FontWeight.w700 : FontWeight.w400,
                 color: textColor,
               ),
             ),

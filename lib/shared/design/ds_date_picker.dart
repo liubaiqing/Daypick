@@ -63,7 +63,7 @@ class _DatePickerGridState extends State<_DatePickerGrid> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: kFontSizeBody,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   color: tokens.textPrimary,
                 ),
               ),

@@ -97,7 +97,7 @@ class _Segment extends StatelessWidget {
           style: TextStyle(
             fontSize: kFontSizeCaption,
             color: fg,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
           ),
         ),
       ),

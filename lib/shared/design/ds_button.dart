@@ -81,7 +81,7 @@ class _DSButtonState extends State<DSButton> {
             style: TextStyle(
               fontSize: kFontSizeBody,
               color: fg,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w400,
             ),
           ),
         ),

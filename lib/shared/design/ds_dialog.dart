@@ -47,7 +47,7 @@ Future<T?> showDSDialog<T>(
                 title,
                 style: TextStyle(
                   fontSize: kFontSizeTitle,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   color: tokens.textPrimary,
                 ),
               ),

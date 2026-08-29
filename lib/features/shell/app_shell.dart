@@ -86,7 +86,7 @@ class _TitleBar extends StatelessWidget {
                 style: TextStyle(
                   fontSize: kFontSizeSmall,
                   color: tokens.textSecondary,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
               const Spacer(),
