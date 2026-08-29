@@ -1,5 +1,6 @@
 #include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
+#include <dwmapi.h>
 #include <windows.h>
 
 #include "flutter_window.h"
@@ -31,6 +32,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);
+
+  // Windows 11 原生窗口圆角（DWM，文档 9.1 节）：
+  // DWMWA_WINDOW_CORNER_PREFERENCE=33 + DWMWCP_ROUND=2；
+  // 最大化时系统自动切回直角；非 Win11 环境返回失败，静默忽略。
+  const DWORD kWindowCornerPreference = 33;
+  const DWORD kCornerRound = 2;
+  ::DwmSetWindowAttribute(window.GetHandle(), kWindowCornerPreference,
+                          &kCornerRound, sizeof(kCornerRound));
 
   ::MSG msg;
   while (::GetMessage(&msg, nullptr, 0, 0)) {
