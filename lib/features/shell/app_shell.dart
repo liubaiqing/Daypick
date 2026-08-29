@@ -57,42 +57,52 @@ class _AppShellState extends State<AppShell> {
   }
 }
 
-/// 自绘标题栏：拖拽区（双击最大化）+ 右上角 Windows 风格窗口按钮（文档 9.1 节）
+/// 自绘标题栏：拖拽区（双击最大化，仅空白区）+ 右上角独立按钮区（即时响应，文档 9.1 节）。
+/// 注意：按钮区必须与 onDoubleTap 手势区分离——同一手势区内 onClick/onDoubleTap
+/// 并存会让单击等待 300ms 双击判定，导致按钮响应延迟。
 class _TitleBar extends StatelessWidget {
   const _TitleBar();
 
   @override
   Widget build(BuildContext context) {
     final tokens = DSTokensScope.of(context);
-    return SizedBox(
-      height: 38,
-      child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onPanStart: (_) => windowManager.startDragging(),
-        onDoubleTap: () async {
-          if (await windowManager.isMaximized()) {
-            await windowManager.unmaximize();
-          } else {
-            await windowManager.maximize();
-          }
-        },
-        child: ColoredBox(
-          color: tokens.sidebarBackground,
-          child: Row(
-            children: [
-              const SizedBox(width: 16),
-              Text(
-                kAppName,
-                style: TextStyle(
-                  fontSize: kFontSizeSmall,
-                  color: tokens.textSecondary,
-                  fontWeight: FontWeight.w400,
+    return ColoredBox(
+      color: tokens.sidebarBackground,
+      child: SizedBox(
+        height: 38,
+        child: Row(
+          children: [
+            // 拖拽 + 双击最大化区（不含按钮）
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onPanStart: (_) => windowManager.startDragging(),
+                onDoubleTap: () async {
+                  if (await windowManager.isMaximized()) {
+                    await windowManager.unmaximize();
+                  } else {
+                    await windowManager.maximize();
+                  }
+                },
+                child: Row(
+                  children: [
+                    const SizedBox(width: 16),
+                    Text(
+                      kAppName,
+                      style: TextStyle(
+                        fontSize: kFontSizeSmall,
+                        color: tokens.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const Spacer(),
+                  ],
                 ),
               ),
-              const Spacer(),
-              const _WindowControls(),
-            ],
-          ),
+            ),
+            // 独立按钮区：不参与双击判定，点击即时响应
+            const _WindowControls(),
+          ],
         ),
       ),
     );
