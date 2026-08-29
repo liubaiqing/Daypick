@@ -1,7 +1,7 @@
 // 存储层单元测试（文档 15.1/15.2 节）：插入 / 月查询 / 日查询 / 删除。
 import 'package:calendar/data/db/database.dart';
 import 'package:calendar/data/db/event_dao.dart';
-import 'package:calendar/data/db/tables.dart';
+import 'package:calendar/domain/event_source_type.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
