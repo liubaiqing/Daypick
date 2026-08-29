@@ -66,36 +66,52 @@ class _AppShellState extends ConsumerState<AppShell> {
           children: [
             const _TitleBar(),
             Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+              child: Stack(
+                clipBehavior: Clip.none,
                 children: [
-                  // 侧边栏（可收起，带平滑动画；收起时 child 由外层裁剪）
-                  AnimatedContainer(
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // 侧边栏（可收起，带平滑动画；收起时 child 由外层裁剪）
+                      AnimatedContainer(
+                        duration: kDurationNormal,
+                        curve: Curves.easeOut,
+                        width: _sidebarCollapsed ? 0 : 220,
+                        clipBehavior: Clip.hardEdge,
+                        decoration: const BoxDecoration(), // 空装饰：仅为启用裁剪
+                        child: _sidebarCollapsed
+                            ? null
+                            : _Sidebar(
+                                current: _current,
+                                onSelect: (item) =>
+                                    setState(() => _current = item),
+                              ),
+                      ),
+                      Container(
+                        width: 1,
+                        color: DSTokensScope.of(context).divider,
+                      ),
+                      Expanded(
+                        child: switch (_current) {
+                          _NavItem.calendar => const CalendarPage(),
+                          _NavItem.settings => const SettingsPage(),
+                        },
+                      ),
+                    ],
+                  ),
+                  // 收起把手：overlay 覆盖在交界线上，不占布局空间（无空白）
+                  AnimatedPositioned(
                     duration: kDurationNormal,
                     curve: Curves.easeOut,
-                    width: _sidebarCollapsed ? 0 : 220,
-                    clipBehavior: Clip.hardEdge,
-                    decoration: const BoxDecoration(), // 空装饰：仅为启用裁剪
-                    child: _sidebarCollapsed
-                        ? null
-                        : _Sidebar(
-                            current: _current,
-                            onSelect: (item) =>
-                                setState(() => _current = item),
-                          ),
-                  ),
-                  // 边缘把手：收起/展开
-                  _SidebarToggle(
-                    key: const ValueKey('sidebar-toggle'),
-                    collapsed: _sidebarCollapsed,
-                    onToggle: _toggleSidebar,
-                  ),
-                  Container(width: 1, color: DSTokensScope.of(context).divider),
-                  Expanded(
-                    child: switch (_current) {
-                      _NavItem.calendar => const CalendarPage(),
-                      _NavItem.settings => const SettingsPage(),
-                    },
+                    // 条带中心对齐交界线（侧边栏宽度/0），收起后贴左缘
+                    left: _sidebarCollapsed ? 0 : 220 - 12,
+                    top: 0,
+                    bottom: 0,
+                    child: _SidebarToggle(
+                      key: const ValueKey('sidebar-toggle'),
+                      collapsed: _sidebarCollapsed,
+                      onToggle: _toggleSidebar,
+                    ),
                   ),
                 ],
               ),
@@ -107,8 +123,9 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 }
 
-/// 侧边栏边缘把手（悬停浮现式）：鼠标靠近右边界线时按钮在边界线中央淡入，
-/// 离开即淡出隐藏；点击收起/展开（文档 9.2 节）。
+/// 侧边栏收起把手（悬停浮现式，overlay 贴合交界线）：
+/// 24px 触发条带覆盖在侧边栏/内容区交界线上（不占布局、无空白），
+/// 鼠标靠近时 16×32 小按钮在交界线垂直中央淡入，离开淡出；点击收起/展开（文档 9.2 节）。
 class _SidebarToggle extends StatefulWidget {
   const _SidebarToggle({
     super.key,
@@ -130,11 +147,10 @@ class _SidebarToggleState extends State<_SidebarToggle> {
   Widget build(BuildContext context) {
     final tokens = DSTokensScope.of(context);
     return MouseRegion(
-      // 触发条带（40px，覆盖边界线两侧）：进入浮现、离开隐藏
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: SizedBox(
-        width: 40,
+        width: 24,
         child: Center(
           child: IgnorePointer(
             ignoring: !_hovered, // 隐藏时不可点
@@ -144,17 +160,17 @@ class _SidebarToggleState extends State<_SidebarToggle> {
               child: GestureDetector(
                 onTap: widget.onToggle,
                 child: Container(
-                  width: 22,
-                  height: 54,
+                  width: 16,
+                  height: 32,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(11),
+                    borderRadius: BorderRadius.circular(8),
                     color: tokens.accentBlue.withValues(alpha: 0.12),
                   ),
                   child: Icon(
                     widget.collapsed
                         ? Icons.chevron_right
                         : Icons.chevron_left,
-                    size: 15,
+                    size: 13,
                     color: tokens.accentBlue,
                   ),
                 ),
