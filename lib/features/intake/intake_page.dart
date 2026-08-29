@@ -1,13 +1,22 @@
-/// 输入页（文档 8 章）：文本输入 → 解析（本地/AI 模式）→ 待确认卡片流。
-/// 状态机：idle → inputReady → parsing → cardsReady（逐条保存/删除/全部保存）。
+/// 输入页（文档 8 章）：文本/图片输入 → OCR（图片）→ 解析（本地/AI 模式）→ 待确认卡片流。
+/// 状态机：idle → inputReady → ocrRunning(图片) → textReady → parsing → cardsReady。
 library;
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pasteboard/pasteboard.dart';
 
+import '../../core/constants.dart';
 import '../../core/errors.dart';
+import '../../data/db/providers.dart';
+import '../../data/llm/openai_compatible_client.dart';
+import '../../data/ocr/ocr_service.dart';
+import '../../data/parsers/ai_parser.dart';
 import '../../data/parsers/local_parser.dart';
+import '../../domain/parsed_event.dart';
 import '../../shared/design/ds_button.dart';
+import '../../shared/design/ds_segmented_control.dart';
 import '../../shared/design/ds_tokens.dart';
 import '../../shared/design/dstokens_scope.dart';
 import 'confirm_card.dart';
@@ -24,16 +33,83 @@ class IntakePage extends ConsumerStatefulWidget {
 class _IntakePageState extends ConsumerState<IntakePage> {
   final TextEditingController _inputCtrl = TextEditingController();
   final LocalParser _localParser = LocalParser();
+  final OpenAiCompatibleClient _llmClient = OpenAiCompatibleClient();
+  final OcrService _ocrService = const OcrService();
+
   _ParseMode _mode = _ParseMode.local;
   bool _parsing = false;
+  bool _ocrBusy = false;
   String? _error;
   List<DraftEntry> _cards = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    // 默认解析模式来自设置（文档 11 章）
+    ref.read(settingsDaoProvider).get(kSettingParseMode).then((mode) {
+      if (!mounted || mode == null) return;
+      setState(() => _mode = mode == kParseModeAi ? _ParseMode.ai : _ParseMode.local);
+    });
+  }
 
   @override
   void dispose() {
     _inputCtrl.dispose();
     super.dispose();
   }
+
+  // ------------------------------------------------------------ 图片输入（OCR）
+
+  Future<void> _pickImage() async {
+    final result = await FilePicker.pickFiles(type: FileType.image);
+    final path = result?.files.single.path;
+    if (path == null) return;
+    await _runOcr(() => _ocrService.recognizeFile(path));
+  }
+
+  Future<void> _pasteImage() async {
+    final bytes = await Pasteboard.image;
+    if (bytes == null) {
+      _showError('剪贴板中没有图片');
+      return;
+    }
+    await _runOcr(() => _ocrService.recognizeBytes(bytes));
+  }
+
+  Future<void> _runOcr(Future<String> Function() recognize) async {
+    if (_ocrBusy) return;
+    setState(() {
+      _ocrBusy = true;
+      _error = null;
+    });
+    try {
+      final text = await recognize();
+      if (!mounted) return;
+      setState(() {
+        _ocrBusy = false;
+        _inputCtrl.text = text.trim();
+      });
+    } on OcrException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _ocrBusy = false;
+        _error = e.message;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _ocrBusy = false;
+        _error = '识别失败：$e';
+      });
+    }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    setState(() => _error = message);
+  }
+
+  // ------------------------------------------------------------ 解析
 
   Future<void> _parse() async {
     final text = _inputCtrl.text.trim();
@@ -45,9 +121,7 @@ class _IntakePageState extends ConsumerState<IntakePage> {
     try {
       final events = switch (_mode) {
         _ParseMode.local => await _localParser.parse(text),
-        _ParseMode.ai => throw const AiParseException(
-            'AI 解析模式将在后续版本接入，请先使用本地模式',
-          ),
+        _ParseMode.ai => await _parseWithAi(text),
       };
       if (!mounted) return;
       setState(() {
@@ -69,11 +143,21 @@ class _IntakePageState extends ConsumerState<IntakePage> {
     }
   }
 
+  Future<List<ParsedEvent>> _parseWithAi(String text) async {
+    final dao = ref.read(settingsDaoProvider);
+    final config = AiConfig(
+      baseUrl: await dao.get(kSettingLlmBaseUrl) ?? kDefaultLlmBaseUrl,
+      apiKey: await dao.get(kSettingLlmApiKey) ?? '',
+      model: await dao.get(kSettingLlmModel) ?? kDefaultLlmModel,
+    );
+    final parser = AiParser(client: _llmClient, config: config);
+    return parser.parse(text);
+  }
+
   Future<void> _saveAll() async {
     var savedCount = 0;
     for (final card in _cards) {
       if (card.saved) continue;
-      // 通过 GlobalKey 触发卡片保存
       final state = card.key.currentState;
       if (state != null && await state.saveNow()) savedCount++;
     }
@@ -85,6 +169,8 @@ class _IntakePageState extends ConsumerState<IntakePage> {
       );
     }
   }
+
+  // ------------------------------------------------------------ UI
 
   @override
   Widget build(BuildContext context) {
@@ -108,17 +194,15 @@ class _IntakePageState extends ConsumerState<IntakePage> {
                 ),
               ),
               const Spacer(),
-              _SegmentedControl(
+              DSSegmentedControl(
                 options: const [
-                  (label: '本地解析', enabled: true),
-                  (label: 'AI 解析', enabled: false),
+                  (label: '本地解析', enabled: true, tooltip: null),
+                  (label: 'AI 解析', enabled: true, tooltip: null),
                 ],
                 selectedIndex: _mode.index,
-                onChanged: (i) {
-                  if (_mode.index != i && i == 0) {
-                    setState(() => _mode = _ParseMode.local);
-                  }
-                },
+                onChanged: (i) => setState(
+                  () => _mode = i == 0 ? _ParseMode.local : _ParseMode.ai,
+                ),
               ),
             ],
           ),
@@ -126,7 +210,7 @@ class _IntakePageState extends ConsumerState<IntakePage> {
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
           child: Text(
-            '粘贴包含时间、地点、事务的文本（图片识别将在后续版本提供）',
+            '粘贴或输入包含时间、地点、事务的文本；也可上传/粘贴图片自动识别（OCR）',
             style: TextStyle(
               fontSize: kFontSizeSmall,
               color: tokens.textSecondary,
@@ -168,6 +252,18 @@ class _IntakePageState extends ConsumerState<IntakePage> {
               DSButton(
                 label: _parsing ? '解析中…' : '解析',
                 onPressed: _parsing ? null : _parse,
+              ),
+              const SizedBox(width: 8),
+              DSButton(
+                label: _ocrBusy ? '识别中…' : '选择图片',
+                kind: DSButtonKind.secondary,
+                onPressed: _ocrBusy ? null : _pickImage,
+              ),
+              const SizedBox(width: 8),
+              DSButton(
+                label: _ocrBusy ? '识别中…' : '粘贴图片',
+                kind: DSButtonKind.secondary,
+                onPressed: _ocrBusy ? null : _pasteImage,
               ),
               if (_error != null) ...[
                 const SizedBox(width: 12),
@@ -224,102 +320,6 @@ class _IntakePageState extends ConsumerState<IntakePage> {
           ),
         ],
       ],
-    );
-  }
-}
-
-/// macOS 风格分段控件（文档 9.6 节 DSSegmentedControl）
-class _SegmentedControl extends StatelessWidget {
-  const _SegmentedControl({
-    required this.options,
-    required this.selectedIndex,
-    required this.onChanged,
-  });
-
-  final List<({String label, bool enabled})> options;
-  final int selectedIndex;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = DSTokensScope.of(context);
-    return Container(
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        color: tokens.textPrimary.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var i = 0; i < options.length; i++) ...[
-            if (i > 0) const SizedBox(width: 2),
-            _Segment(
-              label: options[i].label,
-              enabled: options[i].enabled,
-              selected: i == selectedIndex,
-              onTap: options[i].enabled ? () => onChanged(i) : null,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _Segment extends StatelessWidget {
-  const _Segment({
-    required this.label,
-    required this.enabled,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool enabled;
-  final bool selected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = DSTokensScope.of(context);
-    final fg = !enabled
-        ? tokens.textSecondary.withValues(alpha: 0.5)
-        : selected
-            ? tokens.textPrimary
-            : tokens.textSecondary;
-    return Tooltip(
-      message: enabled ? '' : 'AI 解析将在后续版本接入',
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: kDurationQuick,
-          height: 26,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: selected ? tokens.cardBackground : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-            boxShadow: selected
-                ? const [
-                    BoxShadow(
-                      color: Color(0x1A000000),
-                      blurRadius: 2,
-                      offset: Offset(0, 1),
-                    ),
-                  ]
-                : null,
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: kFontSizeCaption,
-              color: fg,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
