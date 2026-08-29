@@ -62,7 +62,24 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
     expect(find.text('新建事件'), findsNothing);
 
-    // 4) 最后：界面仍正常渲染（未灰屏）
+    // 4) 主界面输入条：输入文本 → 发送 → 结果面板 → 关闭（丢弃草稿）
+    await tester.enterText(
+      find.byType(TextField).last,
+      '明天上午10点开会',
+    );
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tap(find.byIcon(Icons.arrow_upward).last);
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.textContaining('待确认事件'), findsOneWidget);
+    // 面板关闭 → 未保存草稿确认 → 丢弃
+    await tester.tap(find.byKey(const ValueKey('panel-close')));
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tap(find.text('关闭并丢弃'));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.textContaining('待确认事件'), findsNothing);
+
+    // 5) 最后：界面仍正常渲染（未灰屏）
     expect(find.text('今天'), findsOneWidget);
     expect(find.text('日历'), findsOneWidget);
 

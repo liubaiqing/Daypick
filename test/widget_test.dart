@@ -26,9 +26,13 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 50));
 
-    // 侧边栏导航
+    // 侧边栏导航（"新建"入口已移除）
     expect(find.text('日历'), findsOneWidget);
     expect(find.text('设置'), findsOneWidget);
+    expect(find.text('新建'), findsNothing);
+    // 主界面底部输入条：模式分段控件（本地|AI）
+    expect(find.text('本地'), findsOneWidget);
+    expect(find.text('AI'), findsOneWidget);
     // 月视图静态骨架：顶栏「今天」按钮与星期表头（周一起始）
     expect(find.text('今天'), findsOneWidget);
     expect(find.text('一'), findsOneWidget);
