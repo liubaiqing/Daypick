@@ -420,46 +420,57 @@ class _DayCellState extends State<_DayCell> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                width: 26,
-                height: 26,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: widget.isToday
-                      ? tokens.accentBlue
-                      : widget.isSelected
-                          ? tokens.accentBlue.withValues(alpha: 0.12)
-                          : Colors.transparent,
-                ),
-                child: Text(
-                  '${widget.date.day}',
-                  style: TextStyle(
-                    fontSize: kFontSizeBody,
-                    fontWeight:
-                        widget.isToday ? FontWeight.w700 : FontWeight.w400,
-                    color: textColor,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 3),
-              SizedBox(
-                height: 4,
-                child: Row(
+              // 内容整体：空间不足时等比缩小，避免溢出（矮窗口/多附件场景）
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    for (var i = 0; i < dotCount; i++) ...[
-                      if (i > 0) const SizedBox(width: 3),
-                      Container(
-                        width: 4,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color:
-                              widget.eventCount > 0 ? dotColor : Colors.transparent,
+                    Container(
+                      width: 26,
+                      height: 26,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: widget.isToday
+                            ? tokens.accentBlue
+                            : widget.isSelected
+                                ? tokens.accentBlue.withValues(alpha: 0.12)
+                                : Colors.transparent,
+                      ),
+                      child: Text(
+                        '${widget.date.day}',
+                        style: TextStyle(
+                          fontSize: kFontSizeBody,
+                          fontWeight: widget.isToday
+                              ? FontWeight.w700
+                              : FontWeight.w400,
+                          color: textColor,
                         ),
                       ),
-                    ],
+                    ),
+                    const SizedBox(height: 3),
+                    SizedBox(
+                      height: 4,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          for (var i = 0; i < dotCount; i++) ...[
+                            if (i > 0) const SizedBox(width: 3),
+                            Container(
+                              width: 4,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: widget.eventCount > 0
+                                    ? dotColor
+                                    : Colors.transparent,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
