@@ -6,14 +6,13 @@ import 'dart:io';
 import 'package:calendar/app/app.dart';
 import 'package:calendar/data/db/database.dart';
 import 'package:calendar/data/db/providers.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('app shell renders sidebar navigation and calendar', (
+  testWidgets('app shell renders calendar and composer', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -31,10 +30,10 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 50));
 
-    // 侧边栏导航（"新建"入口已移除）
-    expect(find.text('日历'), findsOneWidget);
-    expect(find.text('设置'), findsOneWidget);
+    // 无侧边栏：界面直接是日历 + 输入条 + 设置圆钮
+    expect(find.text('日历'), findsNothing);
     expect(find.text('新建'), findsNothing);
+    expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
     // 主界面底部输入条：模式分段控件（本地|AI）
     expect(find.text('本地'), findsOneWidget);
     expect(find.text('AI'), findsOneWidget);
@@ -44,7 +43,25 @@ void main() {
     expect(find.text('日'), findsOneWidget);
   });
 
-  testWidgets('侧边栏把手悬停浮现，点击可收起与展开', (tester) async {
+  testWidgets('左下角设置按钮弹出设置小窗并可关闭', (tester) async {
+    // 设置弹窗内容会读数据库设置，mock path_provider 避免真实目录异常
+    final messenger = tester.binding.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(
+      const MethodChannel('plugins.flutter.io/path_provider'),
+      (call) async {
+        if (call.method == 'getApplicationSupportDirectory') {
+          return Directory.systemTemp.path;
+        }
+        return null;
+      },
+    );
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(
+        const MethodChannel('plugins.flutter.io/path_provider'),
+        null,
+      );
+    });
+
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -60,29 +77,15 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(find.text('日历'), findsOneWidget);
+    // 点击左下角设置圆钮 → 弹窗出现
+    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(find.text('设置'), findsOneWidget);
 
-    // 模拟鼠标移入把手触发区（按钮浮现）
-    final gesture = await tester.createGesture(
-      kind: PointerDeviceKind.mouse,
-    );
-    await gesture.addPointer(location: Offset.zero);
-    addTearDown(gesture.removePointer);
-    final toggleFinder = find.byKey(const ValueKey('sidebar-toggle'));
-    await gesture.moveTo(tester.getCenter(toggleFinder));
-    await tester.pump(const Duration(milliseconds: 200));
-
-    // 点击收起：导航项消失
-    await tester.tap(toggleFinder);
-    await tester.pump(const Duration(milliseconds: 250));
-    expect(find.text('日历'), findsNothing);
-
-    // 收起后把手左移，鼠标移到新位置再次浮现并展开
-    await gesture.moveTo(tester.getCenter(toggleFinder));
-    await tester.pump(const Duration(milliseconds: 200));
-    await tester.tap(toggleFinder);
-    await tester.pump(const Duration(milliseconds: 250));
-    expect(find.text('日历'), findsOneWidget);
+    // 关闭弹窗
+    await tester.tap(find.byKey(const ValueKey('settings-close')));
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(find.text('设置'), findsNothing);
   });
 
   testWidgets('日期选中聚焦动画：动画圆出现后消失', (tester) async {

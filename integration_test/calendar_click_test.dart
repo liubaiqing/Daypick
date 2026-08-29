@@ -82,9 +82,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
     expect(find.textContaining('待确认事件'), findsNothing);
 
-    // 5) 最后：界面仍正常渲染（未灰屏）
+    // 5) 最后：界面仍正常渲染（未灰屏）；无侧边栏，设置圆钮在左下角
     expect(find.text('今天'), findsOneWidget);
-    expect(find.text('日历'), findsOneWidget);
+    expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
 
     // 等待选中聚焦动画完成，避免测试结束时动画仍在运行
     await tester.pump(const Duration(milliseconds: 500));
