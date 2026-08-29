@@ -180,7 +180,7 @@ class MonthView extends StatelessWidget {
   }
 }
 
-class _DayCell extends StatelessWidget {
+class _DayCell extends StatefulWidget {
   const _DayCell({
     super.key,
     required this.date,
@@ -199,68 +199,94 @@ class _DayCell extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_DayCell> createState() => _DayCellState();
+}
+
+class _DayCellState extends State<_DayCell> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final tokens = DSTokensScope.of(context);
-    final textColor = isToday
+    final textColor = widget.isToday
         ? Colors.white
-        : isSelected
+        : widget.isSelected
             ? tokens.accentBlue
-            : inMonth
+            : widget.inMonth
                 ? tokens.textPrimary
                 : tokens.textSecondary.withValues(alpha: 0.35);
 
-    final dotColor = isToday ? Colors.white : tokens.accentBlue;
-    final dotCount = eventCount.clamp(1, 3);
+    final dotColor = widget.isToday ? Colors.white : tokens.accentBlue;
+    final dotCount = widget.eventCount.clamp(1, 3);
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      // 只注册 onTap：onTap 与 onDoubleTap 并存会让单击延迟 300ms（双击判定）
-      onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 26,
-            height: 26,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isToday
-                  ? tokens.accentBlue
-                  : isSelected
-                      ? tokens.accentBlue.withValues(alpha: 0.12)
-                      : Colors.transparent,
-            ),
-            child: Text(
-              '${date.day}',
-              style: TextStyle(
-                fontSize: kFontSizeBody,
-                fontWeight: isToday ? FontWeight.w700 : FontWeight.w400,
-                color: textColor,
-              ),
-            ),
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        // 只注册 onTap：onTap 与 onDoubleTap 并存会让单击延迟 300ms（双击判定）
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: kDurationQuick,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            // hover 高亮（mac 日历惯例），选中/今日优先于 hover
+            color: widget.isToday || widget.isSelected
+                ? Colors.transparent
+                : _hovered
+                    ? tokens.textPrimary.withValues(alpha: 0.05)
+                    : Colors.transparent,
           ),
-          const SizedBox(height: 3),
-          SizedBox(
-            height: 4,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (var i = 0; i < dotCount; i++) ...[
-                  if (i > 0) const SizedBox(width: 3),
-                  Container(
-                    width: 4,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: eventCount > 0 ? dotColor : Colors.transparent,
-                    ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 26,
+                height: 26,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.isToday
+                      ? tokens.accentBlue
+                      : widget.isSelected
+                          ? tokens.accentBlue.withValues(alpha: 0.12)
+                          : Colors.transparent,
+                ),
+                child: Text(
+                  '${widget.date.day}',
+                  style: TextStyle(
+                    fontSize: kFontSizeBody,
+                    fontWeight:
+                        widget.isToday ? FontWeight.w700 : FontWeight.w400,
+                    color: textColor,
                   ),
-                ],
-              ],
-            ),
+                ),
+              ),
+              const SizedBox(height: 3),
+              SizedBox(
+                height: 4,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var i = 0; i < dotCount; i++) ...[
+                      if (i > 0) const SizedBox(width: 3),
+                      Container(
+                        width: 4,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: widget.eventCount > 0
+                              ? dotColor
+                              : Colors.transparent,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

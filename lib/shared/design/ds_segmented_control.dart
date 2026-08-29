@@ -49,7 +49,7 @@ class DSSegmentedControl extends StatelessWidget {
   }
 }
 
-class _Segment extends StatelessWidget {
+class _Segment extends StatefulWidget {
   const _Segment({
     required this.label,
     required this.enabled,
@@ -65,44 +65,60 @@ class _Segment extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
+  State<_Segment> createState() => _SegmentState();
+}
+
+class _SegmentState extends State<_Segment> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final tokens = DSTokensScope.of(context);
-    final fg = !enabled
+    final fg = !widget.enabled
         ? tokens.textSecondary.withValues(alpha: 0.5)
-        : selected
+        : widget.selected
             ? tokens.textPrimary
             : tokens.textSecondary;
-    final segment = GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: kDurationQuick,
-        height: 26,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: selected ? tokens.cardBackground : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-          boxShadow: selected
-              ? const [
-                  BoxShadow(
-                    color: Color(0x1A000000),
-                    blurRadius: 2,
-                    offset: Offset(0, 1),
-                  ),
-                ]
-              : null,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: kFontSizeCaption,
-            color: fg,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+    final segment = MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: kDurationQuick,
+          height: 26,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: widget.selected
+                ? tokens.cardBackground
+                : _hovered && widget.enabled
+                    ? tokens.textPrimary.withValues(alpha: 0.04)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            boxShadow: widget.selected
+                ? const [
+                    BoxShadow(
+                      color: Color(0x1A000000),
+                      blurRadius: 2,
+                      offset: Offset(0, 1),
+                    ),
+                  ]
+                : null,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            widget.label,
+            style: TextStyle(
+              fontSize: kFontSizeCaption,
+              color: fg,
+              fontWeight:
+                  widget.selected ? FontWeight.w700 : FontWeight.w400,
+            ),
           ),
         ),
       ),
     );
-    if (tooltip == null) return segment;
-    return Tooltip(message: tooltip!, child: segment);
+    if (widget.tooltip == null) return segment;
+    return Tooltip(message: widget.tooltip!, child: segment);
   }
 }
