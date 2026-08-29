@@ -83,6 +83,8 @@ void main() {
     expect(find.text('今天'), findsOneWidget);
     expect(find.text('日历'), findsOneWidget);
 
+    // 等待选中聚焦动画完成，避免测试结束时动画仍在运行
+    await tester.pump(const Duration(milliseconds: 500));
     await tester.pump(const Duration(milliseconds: 100));
   }, timeout: const Timeout(Duration(minutes: 3)));
 }

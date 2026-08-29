@@ -81,4 +81,34 @@ void main() {
     await tester.pump(const Duration(milliseconds: 250));
     expect(find.text('日历'), findsOneWidget);
   });
+
+  testWidgets('日期选中聚焦动画：动画圆出现后消失', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          monthEventsProvider.overrideWith(
+            (ref, arg) => Stream.value(const <Event>[]),
+          ),
+          dayEventsProvider.overrideWith(
+            (ref, arg) => Stream.value(const <Event>[]),
+          ),
+        ],
+        child: const CalendarApp(),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 50));
+
+    final now = DateTime.now();
+    final key = ValueKey('day-${now.year}-${now.month}-15');
+    await tester.tap(find.byKey(key));
+    await tester.pump(const Duration(milliseconds: 50)); // 动画进行中
+
+    // 移动中的浅蓝选中圆可见（首次点击：从今天位置弹出）
+    expect(find.byKey(const ValueKey('selection-anim')), findsOneWidget);
+
+    // 动画完成后圆隐藏（由目标格自身选中态接管）
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('selection-anim')), findsNothing);
+  });
 }
