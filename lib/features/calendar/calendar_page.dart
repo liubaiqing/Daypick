@@ -1,4 +1,5 @@
-/// 日历页（文档 10 章）：月视图 + 今日待办列表；窄窗口（<1000px）自动折叠为上下布局。
+/// 日历页（文档 10 章）：月视图 + 今日待办列表 + 底部居中输入条；
+/// 窄窗口（<1000px）自动折叠为上下布局。
 library;
 
 import 'package:flutter/material.dart';
@@ -61,7 +62,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
               Expanded(flex: 3, child: month),
               Container(height: 1, color: tokens.divider),
               Expanded(flex: 2, child: list),
-              const ChatComposerBar(),
+              const _ComposerSlot(),
             ],
           );
         }
@@ -76,10 +77,28 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                 ],
               ),
             ),
-            const ChatComposerBar(),
+            const _ComposerSlot(),
           ],
         );
       },
+    );
+  }
+}
+
+/// 输入条槽位：底部居中、长度受限（文档 9.2 节）
+class _ComposerSlot extends StatelessWidget {
+  const _ComposerSlot();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: const ChatComposerBar(),
+        ),
+      ),
     );
   }
 }

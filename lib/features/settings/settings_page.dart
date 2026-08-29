@@ -1,4 +1,5 @@
-/// 设置页（文档 11 章）：解析模式、LLM 配置（含测试连接）、数据管理（M4 接入）、关于。
+/// 设置内容（文档 11 章）：外观、AI 服务（LLM 配置）、数据管理、关于。
+/// 以弹窗形式呈现（左下角圆形设置按钮触发，见 showSettingsDialog）。
 library;
 
 import 'dart:io';
@@ -20,14 +21,126 @@ import '../../shared/design/ds_text_field.dart';
 import '../../shared/design/ds_tokens.dart';
 import '../../shared/design/dstokens_scope.dart';
 
-class SettingsPage extends ConsumerStatefulWidget {
-  const SettingsPage({super.key});
-
-  @override
-  ConsumerState<SettingsPage> createState() => _SettingsPageState();
+/// 弹出设置小窗（左下角圆形按钮触发）
+Future<void> showSettingsDialog(BuildContext context) {
+  final animOn = ProviderScope.containerOf(context, listen: false)
+          .read(animationsEnabledProvider)
+          .value ??
+      true;
+  final transition = animOn ? kDurationQuick : Duration.zero;
+  return showGeneralDialog<void>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'settings',
+    barrierColor: Colors.black.withValues(alpha: 0.32),
+    transitionDuration: transition,
+    pageBuilder: (context, _, _) {
+      final tokens = DSTokensScope.of(context);
+      return Center(
+        child: Container(
+          width: 560,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.82,
+          ),
+          decoration: BoxDecoration(
+            color: tokens.cardBackground,
+            borderRadius: BorderRadius.circular(kRadiusPanel),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x40000000),
+                blurRadius: 24,
+                offset: Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 12, 12),
+                child: Row(
+                  children: [
+                    Text(
+                      '设置',
+                      style: TextStyle(
+                        fontSize: kFontSizeTitle,
+                        fontWeight: FontWeight.w700,
+                        color: tokens.textPrimary,
+                      ),
+                    ),
+                    const Spacer(),
+                    _DialogCloseButton(
+                      key: const ValueKey('settings-close'),
+                      onTap: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              Container(height: 1, color: tokens.divider),
+              Expanded(child: SettingsDialogBody()),
+            ],
+          ),
+        ),
+      );
+    },
+    transitionBuilder: (context, animation, _, child) => FadeTransition(
+      opacity: animation,
+      child: ScaleTransition(
+        scale: Tween<double>(begin: 0.97, end: 1.0).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeOut),
+        ),
+        child: child,
+      ),
+    ),
+  );
 }
 
-class _SettingsPageState extends ConsumerState<SettingsPage> {
+/// 弹窗右上角关闭按钮
+class _DialogCloseButton extends StatefulWidget {
+  const _DialogCloseButton({super.key, required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  State<_DialogCloseButton> createState() => _DialogCloseButtonState();
+}
+
+class _DialogCloseButtonState extends State<_DialogCloseButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = DSTokensScope.of(context);
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            color: _hovered
+                ? tokens.textPrimary.withValues(alpha: 0.06)
+                : Colors.transparent,
+          ),
+          child: Icon(Icons.close, size: 15, color: tokens.textSecondary),
+        ),
+      ),
+    );
+  }
+}
+
+class SettingsDialogBody extends ConsumerStatefulWidget {
+  const SettingsDialogBody({super.key});
+
+  @override
+  ConsumerState<SettingsDialogBody> createState() =>
+      _SettingsDialogBodyState();
+}
+
+class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
   final TextEditingController _baseUrlCtrl = TextEditingController();
   final TextEditingController _apiKeyCtrl = TextEditingController();
   final TextEditingController _modelCtrl = TextEditingController();
@@ -199,7 +312,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
 
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
       children: [
         Text(
           '设置',

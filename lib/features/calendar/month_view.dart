@@ -197,6 +197,9 @@ class _MonthViewState extends ConsumerState<MonthView>
   @override
   Widget build(BuildContext context) {
     final tokens = DSTokensScope.of(context);
+    // 预热动画开关订阅：read 首次调用只返回 loading，
+    // 必须先 watch 使 FutureProvider 完成计算（点击时才 read 可拿到结果）
+    ref.watch(animationsEnabledProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
