@@ -13,7 +13,6 @@ class MonthView extends StatelessWidget {
     required this.selectedDay,
     required this.eventsByDay,
     required this.onSelectDay,
-    required this.onNewEvent,
   });
 
   /// 当前展示的月份（取 year/month 即可）
@@ -26,9 +25,6 @@ class MonthView extends StatelessWidget {
   final Map<int, int> eventsByDay;
 
   final ValueChanged<DateTime> onSelectDay;
-
-  /// 双击某日期新建事件
-  final ValueChanged<DateTime> onNewEvent;
 
   static const List<String> _weekLabels = ['一', '二', '三', '四', '五', '六', '日'];
 
@@ -152,7 +148,6 @@ class MonthView extends StatelessWidget {
                         isSelected: date == selected,
                         eventCount: eventsByDay[date.day] ?? 0,
                         onTap: () => onSelectDay(date),
-                        onDoubleTap: () => onNewEvent(date),
                       );
                     }),
                   ),
@@ -194,7 +189,6 @@ class _DayCell extends StatelessWidget {
     required this.isSelected,
     required this.eventCount,
     required this.onTap,
-    required this.onDoubleTap,
   });
 
   final DateTime date;
@@ -203,7 +197,6 @@ class _DayCell extends StatelessWidget {
   final bool isSelected;
   final int eventCount;
   final VoidCallback onTap;
-  final VoidCallback onDoubleTap;
 
   @override
   Widget build(BuildContext context) {
@@ -221,8 +214,8 @@ class _DayCell extends StatelessWidget {
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
+      // 只注册 onTap：onTap 与 onDoubleTap 并存会让单击延迟 300ms（双击判定）
       onTap: onTap,
-      onDoubleTap: onDoubleTap,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

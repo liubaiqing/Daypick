@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/db/database.dart';
 import '../../data/db/providers.dart';
 import '../../shared/design/dstokens_scope.dart';
-import '../event/event_form.dart';
 import 'month_view.dart';
 import 'today_list.dart';
 
@@ -34,10 +33,6 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
     });
   }
 
-  Future<void> _openNewEvent(DateTime day) async {
-    await showEventFormDialog(context, initialDate: day);
-  }
-
   @override
   Widget build(BuildContext context) {
     final tokens = DSTokensScope.of(context);
@@ -53,7 +48,6 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
       selectedDay: _selectedDay,
       eventsByDay: counts,
       onSelectDay: _handleSelectDay,
-      onNewEvent: _openNewEvent,
     );
     final list = TodayList(day: _selectedDay);
 

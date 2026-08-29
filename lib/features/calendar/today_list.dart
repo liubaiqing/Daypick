@@ -40,14 +40,33 @@ class TodayList extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-          child: Text(
-            '${day.month}月${day.day}日 ${_weekNames[day.weekday - 1]}',
-            style: TextStyle(
-              fontSize: kFontSizeTitle,
-              fontWeight: FontWeight.w700,
-              color: tokens.textPrimary,
-            ),
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${day.month}月${day.day}日 ${_weekNames[day.weekday - 1]}',
+                  style: TextStyle(
+                    fontSize: kFontSizeTitle,
+                    fontWeight: FontWeight.w700,
+                    color: tokens.textPrimary,
+                  ),
+                ),
+              ),
+              // 新建事件（替代原"双击日期新建"，保证单击选中即时响应）
+              GestureDetector(
+                onTap: () => showEventFormDialog(context, initialDate: day),
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    color: tokens.textPrimary.withValues(alpha: 0.05),
+                  ),
+                  child: Icon(Icons.add, size: 16, color: tokens.accentBlue),
+                ),
+              ),
+            ],
           ),
         ),
         Expanded(
