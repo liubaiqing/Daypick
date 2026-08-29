@@ -14,6 +14,7 @@ const String kSettingLlmBaseUrl = 'llmBaseUrl';
 const String kSettingLlmApiKey = 'llmApiKey';
 const String kSettingLlmModel = 'llmModel';
 const String kSettingSidebarCollapsed = 'sidebarCollapsed'; // '1' 收起 / '0' 展开
+const String kSettingAnimationsEnabled = 'animationsEnabled'; // '0' 关闭动画 / 默认开启
 
 /// 解析模式取值（settings.parseMode）
 const String kParseModeLocal = 'local';

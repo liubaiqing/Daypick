@@ -5,6 +5,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/db/providers.dart';
 import '../../domain/parsed_event.dart';
 import '../../shared/design/ds_button.dart';
 import '../../shared/design/ds_dialog.dart';
@@ -17,12 +18,18 @@ Future<void> showParseResultPanel(
   BuildContext context,
   List<ParsedEvent> events,
 ) {
+  // 动画开关：关闭时过渡瞬间完成
+  final animOn = ProviderScope.containerOf(context, listen: false)
+          .read(animationsEnabledProvider)
+          .value ??
+      true;
+  final transition = animOn ? kDurationQuick : Duration.zero;
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: false,
     barrierLabel: 'parse-result-panel',
     barrierColor: Colors.black.withValues(alpha: 0.32),
-    transitionDuration: kDurationQuick,
+    transitionDuration: transition,
     pageBuilder: (context, _, _) => _ParseResultPanel(events: events),
     transitionBuilder: (context, animation, _, child) => FadeTransition(
       opacity: animation,

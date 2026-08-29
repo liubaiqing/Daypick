@@ -2,7 +2,9 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/db/providers.dart';
 import 'ds_tokens.dart';
 import 'dstokens_scope.dart';
 
@@ -13,12 +15,18 @@ Future<T?> showDSDialog<T>(
   required Widget content,
   required List<Widget> actions,
 }) {
+  // 动画开关：关闭时过渡瞬间完成
+  final animOn = ProviderScope.containerOf(context, listen: false)
+          .read(animationsEnabledProvider)
+          .value ??
+      true;
+  final transition = animOn ? kDurationQuick : Duration.zero;
   return showGeneralDialog<T>(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'dialog',
     barrierColor: Colors.black.withValues(alpha: 0.32),
-    transitionDuration: kDurationQuick,
+    transitionDuration: transition,
     pageBuilder: (context, _, _) {
       final tokens = DSTokensScope.of(context);
       return Center(

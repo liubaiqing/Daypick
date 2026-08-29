@@ -13,6 +13,7 @@ import '../../domain/parsed_event.dart';
 import '../../shared/design/ds_button.dart';
 import '../../shared/design/ds_date_picker.dart';
 import '../../shared/design/ds_dialog.dart';
+import '../../shared/design/ds_switch.dart';
 import '../../shared/design/ds_text_field.dart';
 import '../../shared/design/ds_tokens.dart';
 import '../../shared/design/dstokens_scope.dart';
@@ -303,7 +304,7 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    _Switch(
+                    DSSwitch(
                       value: _allDay,
                       enabled: !saved,
                       onChanged: (v) => setState(() => _allDay = v),
@@ -442,47 +443,6 @@ class _DateField extends StatelessWidget {
             style: TextStyle(fontSize: kFontSizeBody, color: tokens.textPrimary),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// macOS 风格开关
-class _Switch extends StatelessWidget {
-  const _Switch({required this.value, required this.enabled, required this.onChanged});
-
-  final bool value;
-  final bool enabled;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = DSTokensScope.of(context);
-    return GestureDetector(
-      onTap: enabled ? () => onChanged(!value) : null,
-      child: AnimatedContainer(
-        duration: kDurationQuick,
-        width: 36,
-        height: 20,
-        padding: const EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          color: value
-              ? tokens.successGreen
-              : tokens.textSecondary.withValues(alpha: 0.35),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: AnimatedAlign(
-          duration: kDurationQuick,
-          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            width: 16,
-            height: 16,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-            ),
-          ),
-        ),
       ),
     );
   }

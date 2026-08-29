@@ -53,3 +53,9 @@ final llmModelProvider = FutureProvider<String>((ref) async {
   return await ref.watch(settingsDaoProvider).get(kSettingLlmModel) ??
       kDefaultLlmModel;
 });
+
+/// 界面动画总开关（设置页"外观"；默认开启，关闭以适配低性能设备）
+final animationsEnabledProvider = FutureProvider<bool>((ref) async {
+  final v = await ref.watch(settingsDaoProvider).get(kSettingAnimationsEnabled);
+  return v != '0';
+});
