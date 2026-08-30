@@ -155,12 +155,12 @@ class DSTokens {
     textPrimary: Color(0xD9000000),
     textSecondary: Color(0x80000000),
     divider: Color(0x1A000000),
-    // 毛玻璃强调色：低饱和度柔和版（与玻璃朦胧质感协调，避免刺眼）
-    accentBlue: Color(0xFF5E9CEA),
-    dangerRed: Color(0xFFE8707A),
-    successGreen: Color(0xFF63BE7E),
-    warningOrange: Color(0xFFE8A35E),
-    yellow: Color(0xFFE0C55E),
+    // 毛玻璃强调色：低饱和柔和版 + 半透明（融于玻璃材质，Apple vibrancy 思路）
+    accentBlue: Color(0xE67FAEE8),
+    dangerRed: Color(0xE6E88A94),
+    successGreen: Color(0xE67CC99B),
+    warningOrange: Color(0xE6E8B47C),
+    yellow: Color(0xE6E2CC78),
     windowButtonClose: Color(0xFFFF5F57),
     windowButtonMinimize: Color(0xFFFEBC2E),
     windowButtonMaximize: Color(0xFF28C840),
