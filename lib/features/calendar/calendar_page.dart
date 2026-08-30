@@ -85,7 +85,9 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
   }
 }
 
-/// 输入条槽位：底部居中、长度受限（文档 9.2 节）
+/// 输入条槽位：底部居中、长度受限（文档 9.2 节）。
+/// 注意：Center 是 shrink-wrap 环境，内部必须收 tight 宽度
+/// （SizedBox infinity），否则输入条内 Row/分段控件会收到无界约束。
 class _ComposerSlot extends StatelessWidget {
   const _ComposerSlot();
 
@@ -96,7 +98,10 @@ class _ComposerSlot extends StatelessWidget {
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
-          child: const ChatComposerBar(),
+          child: SizedBox(
+            width: double.infinity,
+            child: const ChatComposerBar(),
+          ),
         ),
       ),
     );

@@ -33,8 +33,9 @@ class DroppedImages extends Notifier<List<String>> {
   void set(List<String> paths) => state = paths;
 }
 
-final droppedImagesProvider =
-    NotifierProvider<DroppedImages, List<String>>(DroppedImages.new);
+final droppedImagesProvider = NotifierProvider<DroppedImages, List<String>>(
+  DroppedImages.new,
+);
 
 /// 支持的图片扩展名（拖拽过滤用）
 const List<String> kImageExtensions = [
@@ -128,8 +129,11 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
       _textCtrl.text = text;
       return;
     }
-    final newText =
-        value.text.replaceRange(selection.start, selection.end, text);
+    final newText = value.text.replaceRange(
+      selection.start,
+      selection.end,
+      text,
+    );
     _textCtrl.value = TextEditingValue(
       text: newText,
       selection: TextSelection.collapsed(offset: selection.start + text.length),
@@ -259,8 +263,7 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
   }
 
   KeyEventResult _handleKey(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent &&
-        event.logicalKey == LogicalKeyboardKey.enter) {
+    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
       if (HardwareKeyboard.instance.isShiftPressed) {
         return KeyEventResult.ignored; // Shift+Enter 换行
       }
@@ -275,12 +278,16 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
   @override
   Widget build(BuildContext context) {
     final tokens = DSTokensScope.of(context);
+    // 动画开关：关闭时分段滑块瞬间就位
+    final animOn = ref.watch(animationsEnabledProvider).value ?? true;
     // 消费全窗口拖入的图片（build 内监听，Riverpod 自动管理生命周期）
     ref.listen(droppedImagesProvider, (prev, next) {
       if (next.isEmpty) return;
       _addDroppedFiles(next);
       ref.read(droppedImagesProvider.notifier).set([]);
     });
+    // 布局：外层 _ComposerSlot 已给出 tight 宽度（ConstrainedBox 640），
+    // 内部 Column stretch 传导；分段控件内容自适应，不依赖宽度约束。
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       child: Column(
@@ -326,9 +333,7 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
                           _AttachmentThumb(
                             key: ValueKey('attachment-$i'),
                             path: _attachmentPaths[i],
-                            onRemove: _busy
-                                ? null
-                                : () => _removeAttachment(i),
+                            onRemove: _busy ? null : () => _removeAttachment(i),
                           ),
                       ],
                     ),
@@ -372,30 +377,31 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
                               hintText: '输入包含时间、地点、事务的内容，或上传图片…',
                               hintStyle: TextStyle(
                                 fontSize: kFontSizeBody,
-                                color: tokens.textSecondary
-                                    .withValues(alpha: 0.6),
+                                color: tokens.textSecondary.withValues(
+                                  alpha: 0.6,
+                                ),
                               ),
                               border: InputBorder.none,
                               isCollapsed: true,
-                              contentPadding:
-                                  const EdgeInsets.symmetric(vertical: 8),
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 8,
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // 解析模式小分段控件
+                    // 解析模式小分段控件（滑块平滑滑动，受动画开关控制）
                     DSSegmentedControl(
                       options: const [
                         (label: '本地', enabled: true, tooltip: null),
                         (label: 'AI', enabled: true, tooltip: null),
                       ],
-                      selectedIndex:
-                          _mode == kParseModeAi ? 1 : 0,
-                      onChanged: (i) => _setMode(
-                        i == 0 ? kParseModeLocal : kParseModeAi,
-                      ),
+                      selectedIndex: _mode == kParseModeAi ? 1 : 0,
+                      duration: animOn ? kDurationNormal : Duration.zero,
+                      onChanged: (i) =>
+                          _setMode(i == 0 ? kParseModeLocal : kParseModeAi),
                     ),
                     const SizedBox(width: 8),
                     // 发送按钮
@@ -415,8 +421,9 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
                                 padding: EdgeInsets.all(8),
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor:
-                                      AlwaysStoppedAnimation(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation(
+                                    Colors.white,
+                                  ),
                                 ),
                               )
                             : const Icon(
@@ -491,7 +498,11 @@ class _ComposerIconButtonState extends State<_ComposerIconButton> {
 
 /// 图片附件缩略图 + 右上角删除
 class _AttachmentThumb extends StatelessWidget {
-  const _AttachmentThumb({super.key, required this.path, required this.onRemove});
+  const _AttachmentThumb({
+    super.key,
+    required this.path,
+    required this.onRemove,
+  });
 
   final String path;
   final VoidCallback? onRemove;
@@ -535,17 +546,10 @@ class _AttachmentThumb extends StatelessWidget {
                   color: tokens.cardBackground,
                   border: Border.all(color: tokens.divider),
                   boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x22000000),
-                      blurRadius: 4,
-                    ),
+                    BoxShadow(color: Color(0x22000000), blurRadius: 4),
                   ],
                 ),
-                child: Icon(
-                  Icons.close,
-                  size: 11,
-                  color: tokens.textSecondary,
-                ),
+                child: Icon(Icons.close, size: 11, color: tokens.textSecondary),
               ),
             ),
           ),

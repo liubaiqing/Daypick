@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:calendar/app/app.dart';
 import 'package:calendar/data/db/database.dart';
 import 'package:calendar/data/db/providers.dart';
+import 'package:calendar/shared/design/ds_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -86,6 +87,60 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('settings-close')));
     await tester.pump(const Duration(milliseconds: 150));
     expect(find.text('设置'), findsNothing);
+  });
+
+  testWidgets('分段控件滑块滑动与动画开关控制', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          monthEventsProvider.overrideWith(
+            (ref, arg) => Stream.value(const <Event>[]),
+          ),
+          dayEventsProvider.overrideWith(
+            (ref, arg) => Stream.value(const <Event>[]),
+          ),
+        ],
+        child: const CalendarApp(),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 50));
+
+    final slider = find.byWidgetPredicate((w) => w is AnimatedPositioned);
+    expect(slider, findsOneWidget);
+
+    AnimatedPositioned sliderWidget() =>
+        tester.widget<AnimatedPositioned>(slider);
+
+    // 动画开启：滑块时长 200ms，初始位于第一位
+    expect(sliderWidget().duration, kDurationNormal);
+    expect(sliderWidget().left, 0);
+
+    // 切换到 AI：滑块滑向第二位（left > 0）
+    await tester.tap(find.text('AI'));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(sliderWidget().left, greaterThan(0));
+  });
+
+  testWidgets('动画关闭时分段滑块瞬间就位（duration=0）', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          monthEventsProvider.overrideWith(
+            (ref, arg) => Stream.value(const <Event>[]),
+          ),
+          dayEventsProvider.overrideWith(
+            (ref, arg) => Stream.value(const <Event>[]),
+          ),
+          animationsEnabledProvider.overrideWith((ref) async => false),
+        ],
+        child: const CalendarApp(),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 50));
+
+    final slider = find.byWidgetPredicate((w) => w is AnimatedPositioned);
+    expect(slider, findsOneWidget);
+    expect(tester.widget<AnimatedPositioned>(slider).duration, Duration.zero);
   });
 
   testWidgets('日期选中聚焦动画：动画圆出现后消失', (tester) async {
