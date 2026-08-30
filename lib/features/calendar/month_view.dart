@@ -527,7 +527,7 @@ class _DayCellState extends State<_DayCell> {
   }
 }
 
-/// 年月标题按钮：常态无框；hover 浮现圆角边框轮廓（提示可点击），
+/// 年月标题按钮：常态无框；hover 浮现淡色圆角底色（提示可点击），
 /// 点击弹出年份选择器（跨年跳转，文档 10.1 节）。
 class _YearTitleButton extends StatefulWidget {
   const _YearTitleButton({required this.label, required this.onTap});
@@ -561,12 +561,6 @@ class _YearTitleButtonState extends State<_YearTitleButton> {
                 ? tokens.textPrimary.withValues(alpha: 0.05)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: _hovered
-                  ? tokens.textPrimary.withValues(alpha: 0.25)
-                  : Colors.transparent,
-              width: 1,
-            ),
           ),
           child: Text(
             widget.label,
