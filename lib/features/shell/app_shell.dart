@@ -66,8 +66,8 @@ class _AppShellState extends ConsumerState<AppShell> {
                   : _buildBody(context),
             ),
           ),
-          // 窗口边缘缩放热区（无边框窗口：MouseRegion 显示缩放光标，
-          // 按下经 window_manager.startResizing 进入系统缩放循环）
+          // 窗口边缘缩放热区：MouseRegion 显示缩放光标（Flutter 框架光标），
+          // 按下经 window_manager.startResizing 触发系统缩放循环
           const Positioned.fill(child: _WindowResizeEdges()),
         ],
       ),
@@ -104,56 +104,62 @@ class _AppShellState extends ConsumerState<AppShell> {
 }
 
 /// 窗口边缘缩放热区（无边框窗口恢复自由缩放，文档 9.1 节）：
-/// 四边/四角各 6px 的 MouseRegion——悬停显示对应缩放光标（Flutter 框架光标），
-/// 按下经 window_manager.startResizing 进入系统缩放循环。
-/// （window_manager setAsFrameless 移除了系统边框热区，此为官方推荐方案：
-/// resize_edge.dart + startResizing）
-class _WindowResizeEdges extends StatelessWidget {
+/// 四边/四角各 6px 区域——MouseRegion 悬停显示缩放光标；
+/// GestureDetector pan 手势按下后手动计算目标尺寸/位置并调用
+/// windowManager.setBounds（不依赖系统 SC_SIZE 循环——Flutter 引擎
+/// 会拦截缩放循环期间的鼠标消息，系统缩放在此窗口无效）。
+class _WindowResizeEdges extends StatefulWidget {
   const _WindowResizeEdges();
 
   static const double _edge = 6;
 
+  @override
+  State<_WindowResizeEdges> createState() => _WindowResizeEdgesState();
+}
+
+class _WindowResizeEdgesState extends State<_WindowResizeEdges> {
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
         // 上边 / 下边
         Positioned(
-          left: _edge,
-          right: _edge,
+          left: _WindowResizeEdges._edge,
+          right: _WindowResizeEdges._edge,
           top: 0,
-          height: _edge,
+          height: _WindowResizeEdges._edge,
           child: _edgeZone(ResizeEdge.top, SystemMouseCursors.resizeUpDown),
         ),
         Positioned(
-          left: _edge,
-          right: _edge,
+          left: _WindowResizeEdges._edge,
+          right: _WindowResizeEdges._edge,
           bottom: 0,
-          height: _edge,
+          height: _WindowResizeEdges._edge,
           child: _edgeZone(ResizeEdge.bottom, SystemMouseCursors.resizeUpDown),
         ),
         // 左边 / 右边
         Positioned(
-          top: _edge,
-          bottom: _edge,
+          top: _WindowResizeEdges._edge,
+          bottom: _WindowResizeEdges._edge,
           left: 0,
-          width: _edge,
-          child: _edgeZone(ResizeEdge.left, SystemMouseCursors.resizeLeftRight),
+          width: _WindowResizeEdges._edge,
+          child:
+              _edgeZone(ResizeEdge.left, SystemMouseCursors.resizeLeftRight),
         ),
         Positioned(
-          top: _edge,
-          bottom: _edge,
+          top: _WindowResizeEdges._edge,
+          bottom: _WindowResizeEdges._edge,
           right: 0,
-          width: _edge,
+          width: _WindowResizeEdges._edge,
           child:
               _edgeZone(ResizeEdge.right, SystemMouseCursors.resizeLeftRight),
         ),
-        // 四角
+        // 四角（覆盖边）
         Positioned(
           top: 0,
           left: 0,
-          width: _edge * 2,
-          height: _edge * 2,
+          width: _WindowResizeEdges._edge * 2,
+          height: _WindowResizeEdges._edge * 2,
           child: _edgeZone(
             ResizeEdge.topLeft,
             SystemMouseCursors.resizeUpLeftDownRight,
@@ -162,8 +168,8 @@ class _WindowResizeEdges extends StatelessWidget {
         Positioned(
           top: 0,
           right: 0,
-          width: _edge * 2,
-          height: _edge * 2,
+          width: _WindowResizeEdges._edge * 2,
+          height: _WindowResizeEdges._edge * 2,
           child: _edgeZone(
             ResizeEdge.topRight,
             SystemMouseCursors.resizeUpRightDownLeft,
@@ -172,8 +178,8 @@ class _WindowResizeEdges extends StatelessWidget {
         Positioned(
           bottom: 0,
           left: 0,
-          width: _edge * 2,
-          height: _edge * 2,
+          width: _WindowResizeEdges._edge * 2,
+          height: _WindowResizeEdges._edge * 2,
           child: _edgeZone(
             ResizeEdge.bottomLeft,
             SystemMouseCursors.resizeUpRightDownLeft,
@@ -182,8 +188,8 @@ class _WindowResizeEdges extends StatelessWidget {
         Positioned(
           bottom: 0,
           right: 0,
-          width: _edge * 2,
-          height: _edge * 2,
+          width: _WindowResizeEdges._edge * 2,
+          height: _WindowResizeEdges._edge * 2,
           child: _edgeZone(
             ResizeEdge.bottomRight,
             SystemMouseCursors.resizeUpLeftDownRight,
@@ -196,11 +202,72 @@ class _WindowResizeEdges extends StatelessWidget {
   Widget _edgeZone(ResizeEdge edge, MouseCursor cursor) {
     return MouseRegion(
       cursor: cursor,
-      child: Listener(
-        onPointerDown: (_) => windowManager.startResizing(edge),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onPanDown: (d) => _beginResize(edge, d),
+        onPanUpdate: (d) => _updateResize(d.delta),
+        onPanEnd: (_) => _endResize(),
+        onPanCancel: _endResize,
         child: const SizedBox.expand(),
       ),
     );
+  }
+
+  Rect? _startBounds;
+  ResizeEdge? _edge;
+
+  Future<void> _beginResize(ResizeEdge edge, DragDownDetails d) async {
+    _edge = edge;
+    _startBounds = await windowManager.getBounds();
+  }
+
+  Future<void> _updateResize(Offset delta) async {
+    final edge = _edge;
+    final start = _startBounds;
+    if (edge == null || start == null) return;
+    // 依据边缘方向计算新位置与尺寸（左/上边缘变化时锚点移动）
+    var left = start.left;
+    var top = start.top;
+    var width = start.width;
+    var height = start.height;
+    switch (edge) {
+      case ResizeEdge.left:
+        left += delta.dx;
+        width -= delta.dx;
+      case ResizeEdge.right:
+        width += delta.dx;
+      case ResizeEdge.top:
+        top += delta.dy;
+        height -= delta.dy;
+      case ResizeEdge.bottom:
+        height += delta.dy;
+      case ResizeEdge.topLeft:
+        left += delta.dx;
+        width -= delta.dx;
+        top += delta.dy;
+        height -= delta.dy;
+      case ResizeEdge.topRight:
+        width += delta.dx;
+        top += delta.dy;
+        height -= delta.dy;
+      case ResizeEdge.bottomLeft:
+        left += delta.dx;
+        width -= delta.dx;
+        height += delta.dy;
+      case ResizeEdge.bottomRight:
+        width += delta.dx;
+        height += delta.dy;
+    }
+    await windowManager.setBounds(
+      null,
+      position: Offset(left, top),
+      size: Size(width, height),
+    );
+  }
+
+  void _endResize() {
+    _edge = null;
+    _startBounds = null;
   }
 }
 
