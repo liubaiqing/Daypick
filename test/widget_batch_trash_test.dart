@@ -302,6 +302,10 @@ void main() {
         DSTokensScope.of(tester.element(find.byType(AppShell)));
     expect(tokensOf().glassBlurSigma, 0);
     expect(tokensOf().mainBackground, DSTokens.light.mainBackground);
+    expect(
+      tester.widget(find.byKey(const ValueKey('settings-section-theme'))),
+      isA<Container>(),
+    );
 
     // 切深色：token 立即变为 dark（亮度分层 + 无投影）
     await tester.tap(find.text('深色'));
@@ -328,6 +332,10 @@ void main() {
     expect(tokensOf().glassBlurSigma, greaterThan(0));
     expect(tokensOf().textPrimary, DSTokens.glass.textPrimary);
     expect(tokensOf().accentBlue, const Color(0xFF3D7EC5));
+    expect(
+      tester.widget(find.byKey(const ValueKey('settings-section-theme'))),
+      isA<Padding>(),
+    );
 
     // 玻璃只用于顶层浮层：输入条为轻玻璃，设置窗口为强玻璃。
     expect(

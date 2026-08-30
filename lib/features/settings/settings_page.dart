@@ -320,12 +320,15 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
     if (!_loaded) {
       return const Center(child: CircularProgressIndicator(strokeWidth: 2));
     }
+    final isGlass = tokens.glassBlurSigma > 0;
+    final sectionGap = isGlass ? 6.0 : 14.0;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+      padding: EdgeInsets.fromLTRB(16, isGlass ? 8 : 12, 16, 20),
       children: [
         // ---- 外观 ----
-        _SectionCard(
+        _SettingsSection(
+          surfaceKey: const ValueKey('settings-section-appearance'),
           title: '外观',
           child: Row(
             children: [
@@ -359,10 +362,11 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
             ],
           ),
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: sectionGap),
 
         // ---- 主题（文档 11 章：浅色/深色/毛玻璃三选一）----
-        _SectionCard(
+        _SettingsSection(
+          surfaceKey: const ValueKey('settings-section-theme'),
           title: '主题',
           child: DSSegmentedControl(
             key: const ValueKey('settings-theme-segment'),
@@ -383,10 +387,11 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
             }),
           ),
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: sectionGap),
 
         // ---- AI 服务 ----
-        _SectionCard(
+        _SettingsSection(
+          surfaceKey: const ValueKey('settings-section-ai'),
           title: 'AI 服务（OpenAI 兼容）',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -493,10 +498,11 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
             ],
           ),
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: sectionGap),
 
         // ---- 数据管理 ----
-        _SectionCard(
+        _SettingsSection(
+          surfaceKey: const ValueKey('settings-section-data'),
           title: '数据管理',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -544,10 +550,11 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
             ],
           ),
         ),
-        const SizedBox(height: 14),
+        SizedBox(height: sectionGap),
 
         // ---- 关于 ----
-        _SectionCard(
+        _SettingsSection(
+          surfaceKey: const ValueKey('settings-section-about'),
           title: '关于',
           child: Text(
             'calendar v1.0.4+1 · Windows 桌面关键事务日历',
@@ -562,40 +569,53 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
   }
 }
 
-/// 设置分组卡片
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.child});
+/// 设置内容分组：毛玻璃主题直接排版在单块玻璃上，其他主题保持卡片回退。
+class _SettingsSection extends StatelessWidget {
+  const _SettingsSection({
+    required this.surfaceKey,
+    required this.title,
+    required this.child,
+  });
 
+  final Key surfaceKey;
   final String title;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final tokens = DSTokensScope.of(context);
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: kFontSizeCaption,
+            fontWeight: FontWeight.w700,
+            color: tokens.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 10),
+        child,
+      ],
+    );
+
+    if (tokens.glassBlurSigma > 0) {
+      return Padding(
+        key: surfaceKey,
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        child: content,
+      );
+    }
+
     return Container(
+      key: surfaceKey,
       decoration: BoxDecoration(
         color: tokens.cardBackground,
         borderRadius: BorderRadius.circular(kRadiusCard),
         border: Border.all(color: tokens.divider),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: kFontSizeCaption,
-                fontWeight: FontWeight.w700,
-                color: tokens.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 10),
-            child,
-          ],
-        ),
-      ),
+      child: Padding(padding: const EdgeInsets.all(16), child: content),
     );
   }
 }
