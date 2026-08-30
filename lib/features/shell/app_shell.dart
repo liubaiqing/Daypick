@@ -7,9 +7,12 @@
 /// 提供微妙层次，不做整窗模糊（性能）。
 library;
 
+import 'dart:async';
+
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:screen_retriever/screen_retriever.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../core/constants.dart';
@@ -18,6 +21,7 @@ import '../../shared/design/dstokens_scope.dart';
 import '../calendar/calendar_page.dart';
 import '../intake/chat_composer_bar.dart';
 import '../settings/settings_page.dart';
+import 'window_resize_geometry.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
@@ -105,9 +109,9 @@ class _AppShellState extends ConsumerState<AppShell> {
 
 /// 窗口边缘缩放热区（无边框窗口恢复自由缩放，文档 9.1 节）：
 /// 四边/四角各 6px 区域——MouseRegion 悬停显示缩放光标；
-/// GestureDetector pan 手势按下后手动计算目标尺寸/位置并调用
-/// windowManager.setBounds（不依赖系统 SC_SIZE 循环——Flutter 引擎
-/// 会拦截缩放循环期间的鼠标消息，系统缩放在此窗口无效）。
+/// GestureDetector 捕获拖动生命周期；尺寸计算使用 screen_retriever 返回的
+/// 系统级绝对光标位置，并串行合并 windowManager.setBounds 更新。
+/// 不依赖系统 SC_SIZE 循环——Flutter 引擎会拦截该循环期间的鼠标消息。
 class _WindowResizeEdges extends StatefulWidget {
   const _WindowResizeEdges();
 
@@ -143,16 +147,17 @@ class _WindowResizeEdgesState extends State<_WindowResizeEdges> {
           bottom: _WindowResizeEdges._edge,
           left: 0,
           width: _WindowResizeEdges._edge,
-          child:
-              _edgeZone(ResizeEdge.left, SystemMouseCursors.resizeLeftRight),
+          child: _edgeZone(ResizeEdge.left, SystemMouseCursors.resizeLeftRight),
         ),
         Positioned(
           top: _WindowResizeEdges._edge,
           bottom: _WindowResizeEdges._edge,
           right: 0,
           width: _WindowResizeEdges._edge,
-          child:
-              _edgeZone(ResizeEdge.right, SystemMouseCursors.resizeLeftRight),
+          child: _edgeZone(
+            ResizeEdge.right,
+            SystemMouseCursors.resizeLeftRight,
+          ),
         ),
         // 四角（覆盖边）
         Positioned(
@@ -204,70 +209,107 @@ class _WindowResizeEdgesState extends State<_WindowResizeEdges> {
       cursor: cursor,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onPanDown: (d) => _beginResize(edge, d),
-        onPanUpdate: (d) => _updateResize(d.delta),
-        onPanEnd: (_) => _endResize(),
-        onPanCancel: _endResize,
+        onPanDown: (details) => _beginResize(edge, details.globalPosition),
+        onPanUpdate: (_) => _requestResize(),
+        onPanEnd: (_) => _finishResize(),
+        onPanCancel: _finishResize,
         child: const SizedBox.expand(),
       ),
     );
   }
 
   Rect? _startBounds;
+  Offset? _startCursor;
   ResizeEdge? _edge;
+  int _resizeSession = 0;
+  bool _resizeRequested = false;
+  bool _resizeWorkerRunning = false;
+  bool _resizeEnding = false;
 
-  Future<void> _beginResize(ResizeEdge edge, DragDownDetails d) async {
+  Future<void> _beginResize(ResizeEdge edge, Offset pointerDownPosition) async {
+    final session = ++_resizeSession;
+    // 边缘与会话同步建立；平台初始读取完成前到来的 update/end 会被缓存，
+    // 避免快速短拖动因异步初始化尚未完成而完全失效。
     _edge = edge;
-    _startBounds = await windowManager.getBounds();
+    _startBounds = null;
+    _startCursor = null;
+    _resizeEnding = false;
+    _resizeRequested = false;
+
+    final startBounds = await windowManager.getBounds();
+    if (!mounted || session != _resizeSession) return;
+    _edge = edge;
+    _startBounds = startBounds;
+    // globalPosition 是按下当帧的窗口内坐标；与窗口屏幕位置组合即可得到
+    // 不受异步平台调用延迟影响的绝对起点。
+    _startCursor = startBounds.topLeft + pointerDownPosition;
+    _requestResize();
   }
 
-  Future<void> _updateResize(Offset delta) async {
-    final edge = _edge;
-    final start = _startBounds;
-    if (edge == null || start == null) return;
-    // 依据边缘方向计算新位置与尺寸（左/上边缘变化时锚点移动）
-    var left = start.left;
-    var top = start.top;
-    var width = start.width;
-    var height = start.height;
-    switch (edge) {
-      case ResizeEdge.left:
-        left += delta.dx;
-        width -= delta.dx;
-      case ResizeEdge.right:
-        width += delta.dx;
-      case ResizeEdge.top:
-        top += delta.dy;
-        height -= delta.dy;
-      case ResizeEdge.bottom:
-        height += delta.dy;
-      case ResizeEdge.topLeft:
-        left += delta.dx;
-        width -= delta.dx;
-        top += delta.dy;
-        height -= delta.dy;
-      case ResizeEdge.topRight:
-        width += delta.dx;
-        top += delta.dy;
-        height -= delta.dy;
-      case ResizeEdge.bottomLeft:
-        left += delta.dx;
-        width -= delta.dx;
-        height += delta.dy;
-      case ResizeEdge.bottomRight:
-        width += delta.dx;
-        height += delta.dy;
+  void _requestResize() {
+    if (_edge == null) return;
+    _resizeRequested = true;
+    if (_startBounds == null || _startCursor == null) return;
+    if (!_resizeWorkerRunning) {
+      unawaited(_drainResizeRequests(_resizeSession));
     }
-    await windowManager.setBounds(
-      null,
-      position: Offset(left, top),
-      size: Size(width, height),
-    );
   }
 
-  void _endResize() {
+  /// 串行处理窗口更新，并把处理期间到来的多次鼠标事件合并为最新一帧。
+  /// 这样不会出现多个 setBounds 平台请求乱序完成、旧尺寸覆盖新尺寸的闪烁。
+  Future<void> _drainResizeRequests(int session) async {
+    if (_resizeWorkerRunning) return;
+    _resizeWorkerRunning = true;
+    try {
+      while (mounted && session == _resizeSession && _resizeRequested) {
+        _resizeRequested = false;
+        final start = _startBounds;
+        final startCursor = _startCursor;
+        final edge = _edge;
+        if (start == null || startCursor == null || edge == null) break;
+
+        final cursor = await screenRetriever.getCursorScreenPoint();
+        if (!mounted || session != _resizeSession) break;
+        final target = calculateWindowResizeBounds(
+          startBounds: start,
+          cursorDelta: cursor - startCursor,
+          edge: edge,
+          minimumSize: const Size(kWindowMinWidth, kWindowMinHeight),
+        );
+        await windowManager.setBounds(
+          null,
+          position: target.topLeft,
+          size: target.size,
+        );
+      }
+    } finally {
+      _resizeWorkerRunning = false;
+      if (session == _resizeSession && _resizeRequested) {
+        unawaited(_drainResizeRequests(session));
+      } else if (session == _resizeSession && _resizeEnding) {
+        _clearResize(session);
+      } else if (_resizeRequested && _edge != null) {
+        // 上一轮异步请求结束前用户已开始新一轮拖动。
+        unawaited(_drainResizeRequests(_resizeSession));
+      }
+    }
+  }
+
+  void _finishResize() {
+    if (_edge == null) return;
+    _resizeEnding = true;
+    // 强制读取一次释放时的绝对光标位置，确保最后一小段位移也被应用。
+    _requestResize();
+  }
+
+  void _clearResize(int session) {
+    if (session != _resizeSession) return;
     _edge = null;
     _startBounds = null;
+    _startCursor = null;
+    _resizeRequested = false;
+    _resizeEnding = false;
+    _resizeSession++;
   }
 }
 
@@ -382,10 +424,12 @@ class _WindowControlsState extends State<_WindowControls> {
   @override
   void initState() {
     super.initState();
-    windowManager.addListener(_WindowListener(
-      onMaximize: () => setState(() => _maximized = true),
-      onUnmaximize: () => setState(() => _maximized = false),
-    ));
+    windowManager.addListener(
+      _WindowListener(
+        onMaximize: () => setState(() => _maximized = true),
+        onUnmaximize: () => setState(() => _maximized = false),
+      ),
+    );
   }
 
   Future<void> _handleTap(_WindowAction action) async {
@@ -476,8 +520,8 @@ class _WindowButtonState extends State<_WindowButton> {
     final bg = widget.danger && _hovered
         ? const Color(0xFFE81123) // Windows 关闭按钮 hover 红
         : _hovered
-            ? tokens.textPrimary.withValues(alpha: 0.06)
-            : Colors.transparent;
+        ? tokens.textPrimary.withValues(alpha: 0.06)
+        : Colors.transparent;
     final fg = widget.danger && _hovered
         ? Colors.white
         : tokens.textPrimary.withValues(alpha: 0.75);
