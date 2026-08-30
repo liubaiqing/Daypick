@@ -324,18 +324,8 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
       children: [
-        Text(
-          '设置',
-          style: TextStyle(
-            fontSize: kFontSizeLargeTitle,
-            fontWeight: FontWeight.w700,
-            color: tokens.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 16),
-
         // ---- 外观 ----
         _SectionCard(
           title: '外观',
