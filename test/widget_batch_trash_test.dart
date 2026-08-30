@@ -317,11 +317,18 @@ void main() {
       ),
       findsWidgets,
     );
-    final kinds = tester
+    final glassSurfaces = tester
         .widgetList<DSGlassSurface>(find.byType(DSGlassSurface))
-        .map((surface) => surface.kind);
+        .toList();
+    final kinds = glassSurfaces.map((surface) => surface.kind);
     expect(kinds, contains(DSGlassSurfaceKind.floating));
     expect(kinds, contains(DSGlassSurfaceKind.dialog));
+    expect(
+      glassSurfaces.where(
+        (surface) => surface.singleLayerEdge && surface.tint != null,
+      ),
+      hasLength(1),
+    );
     expect(
       find.descendant(
         of: find.byType(DSGlassSurface),

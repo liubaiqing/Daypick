@@ -406,6 +406,7 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
                         child: DSGlassSurface(
                           kind: DSGlassSurfaceKind.floating,
                           borderRadius: BorderRadius.circular(16),
+                          singleLayerEdge: true,
                           tint: tokens.accentBlue.withValues(
                             alpha: _busy ? 0.38 : 0.72,
                           ),

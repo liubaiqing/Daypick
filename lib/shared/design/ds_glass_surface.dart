@@ -27,6 +27,7 @@ class DSGlassSurface extends StatefulWidget {
     this.fallbackShadow = true,
     this.kind = DSGlassSurfaceKind.dialog,
     this.tint,
+    this.singleLayerEdge = false,
   });
 
   final Widget child;
@@ -41,6 +42,9 @@ class DSGlassSurface extends StatefulWidget {
 
   /// 可选强调色着色（对应 Liquid Glass tint）；透明度由调用方控制。
   final Color? tint;
+
+  /// 只保留一层连续弧面边缘，不绘制内缘焦散环；用于小型着色主按钮。
+  final bool singleLayerEdge;
 
   @override
   State<DSGlassSurface> createState() => _DSGlassSurfaceState();
@@ -199,6 +203,7 @@ class _DSGlassSurfaceState extends State<DSGlassSurface> {
                         pointer: _pointer,
                         hovered: _hovered,
                         isDialog: isDialog,
+                        singleLayerEdge: widget.singleLayerEdge,
                       ),
                       child: Container(
                         decoration: BoxDecoration(
@@ -238,12 +243,14 @@ class _LiquidGlassPainter extends CustomPainter {
     required this.pointer,
     required this.hovered,
     required this.isDialog,
+    required this.singleLayerEdge,
   });
 
   final BorderRadius radius;
   final Offset? pointer;
   final bool hovered;
   final bool isDialog;
+  final bool singleLayerEdge;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -311,23 +318,25 @@ class _LiquidGlassPainter extends CustomPainter {
       ).createShader(rect);
     canvas.drawPath(edgeBand, lensBandPaint);
 
-    // 柔和的内缘焦散把宽边缘平滑收束到中央清晰区。
-    final innerCausticPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = isDialog ? 1.5 : 1.1
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, isDialog ? 1.8 : 1.1)
-      ..shader = const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Color(0x52FFFFFF),
-          Color(0x0AFFFFFF),
-          Color(0x1817202B),
-          Color(0x3DFFFFFF),
-        ],
-        stops: [0, 0.42, 0.72, 1],
-      ).createShader(rect);
-    canvas.drawRRect(innerRRect, innerCausticPaint);
+    if (!singleLayerEdge) {
+      // 柔和的内缘焦散把宽边缘平滑收束到中央清晰区。
+      final innerCausticPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = isDialog ? 1.5 : 1.1
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, isDialog ? 1.8 : 1.1)
+        ..shader = const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0x52FFFFFF),
+            Color(0x0AFFFFFF),
+            Color(0x1817202B),
+            Color(0x3DFFFFFF),
+          ],
+          stops: [0, 0.42, 0.72, 1],
+        ).createShader(rect);
+      canvas.drawRRect(innerRRect, innerCausticPaint);
+    }
 
     final point = pointer;
     if (hovered && point != null) {
@@ -374,5 +383,6 @@ class _LiquidGlassPainter extends CustomPainter {
       oldDelegate.radius != radius ||
       oldDelegate.pointer != pointer ||
       oldDelegate.hovered != hovered ||
-      oldDelegate.isDialog != isDialog;
+      oldDelegate.isDialog != isDialog ||
+      oldDelegate.singleLayerEdge != singleLayerEdge;
 }
