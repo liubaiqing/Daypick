@@ -20,6 +20,7 @@ import '../../data/ocr/ocr_service.dart';
 import '../../data/parsers/ai_parser.dart';
 import '../../data/parsers/local_parser.dart';
 import '../../domain/parsed_event.dart';
+import '../../shared/design/ds_glass_surface.dart';
 import '../../shared/design/ds_segmented_control.dart';
 import '../../shared/design/ds_tokens.dart';
 import '../../shared/design/dstokens_scope.dart';
@@ -304,23 +305,16 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
                 ),
               ),
             ),
-          Container(
-            padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
-            decoration: BoxDecoration(
-              color: tokens.cardBackground,
-              borderRadius: BorderRadius.circular(kRadiusComposer),
-              border: Border.all(color: tokens.divider),
-              boxShadow: [
-                BoxShadow(
-                  color: tokens.cardShadowColor,
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+          DSGlassSurface(
+            borderRadius: BorderRadius.circular(kRadiusComposer),
+            // 非毛玻璃主题下保持输入条原有卡片视觉
+            fallbackColor: tokens.cardBackground,
+            fallbackShadowColor: tokens.cardShadowColor,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 8, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                 // 图片附件缩略图（输入框内，可删除）
                 if (_attachmentPaths.isNotEmpty)
                   Padding(
@@ -438,9 +432,10 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
               ],
             ),
           ),
-        ],
-      ),
-    );
+        ),
+      ],
+    ),
+  );
   }
 }
 

@@ -64,5 +64,15 @@ void main() {
     // 深色移除投影
     expect(DSTokens.dark.panelShadowColor, const Color(0x00000000));
     expect(DSTokens.dark.cardShadowColor, const Color(0x00000000));
+    // 毛玻璃材质：反光渐变着色（高光>透明）与渐变边缘描边
+    expect(
+      DSTokens.glass.glassTintStart.a,
+      greaterThan(DSTokens.glass.glassTintEnd.a),
+    );
+    expect(
+      DSTokens.glass.glassEdgeStart.a,
+      greaterThan(DSTokens.glass.glassEdgeEnd.a),
+    );
+    expect(DSTokens.light.glassTintStart.a, 0);
   });
 }

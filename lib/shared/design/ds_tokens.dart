@@ -27,6 +27,10 @@ class DSTokens {
     required this.glassSurface,
     required this.glassBorder,
     required this.glassBlurSigma,
+    required this.glassTintStart,
+    required this.glassTintEnd,
+    required this.glassEdgeStart,
+    required this.glassEdgeEnd,
     required this.panelShadowColor,
     required this.cardShadowColor,
   });
@@ -66,6 +70,14 @@ class DSTokens {
   final Color glassBorder;
   /// 背景模糊半径
   final double glassBlurSigma;
+  /// 玻璃反光渐变着色起点（高光，左上）
+  final Color glassTintStart;
+  /// 玻璃反光渐变着色终点（透明，右下）
+  final Color glassTintEnd;
+  /// 玻璃边缘渐变描边起点（高光反射）
+  final Color glassEdgeStart;
+  /// 玻璃边缘渐变描边终点
+  final Color glassEdgeEnd;
 
   // ---- 投影（文档 9.5 深色主题移除投影，改 hairline + 亮度分层）----
   /// 弹层/浮层投影色（浅色正常、深色透明、毛玻璃调轻）
@@ -93,6 +105,10 @@ class DSTokens {
     glassSurface: Color(0x00000000),
     glassBorder: Color(0x00000000),
     glassBlurSigma: 0,
+    glassTintStart: Color(0x00000000),
+    glassTintEnd: Color(0x00000000),
+    glassEdgeStart: Color(0x00000000),
+    glassEdgeEnd: Color(0x00000000),
     panelShadowColor: Color(0x40000000),
     cardShadowColor: Color(0x14000000),
   );
@@ -117,6 +133,10 @@ class DSTokens {
     glassSurface: Color(0x00000000),
     glassBorder: Color(0x00000000),
     glassBlurSigma: 0,
+    glassTintStart: Color(0x00000000),
+    glassTintEnd: Color(0x00000000),
+    glassEdgeStart: Color(0x00000000),
+    glassEdgeEnd: Color(0x00000000),
     // 深色主题移除投影（亮度分层代替阴影）
     panelShadowColor: Color(0x00000000),
     cardShadowColor: Color(0x00000000),
@@ -146,6 +166,12 @@ class DSTokens {
     glassSurface: Color(0xBFFFFFFF),
     glassBorder: Color(0x0F000000),
     glassBlurSigma: 20,
+    // 玻璃反光渐变：左上高光白 0.4 → 右下透明（教程参数，模拟光源反射）
+    glassTintStart: Color(0x66FFFFFF),
+    glassTintEnd: Color(0x1AFFFFFF),
+    // 边缘渐变描边：白 0.5 → 白 0.12（玻璃边缘反射）
+    glassEdgeStart: Color(0x80FFFFFF),
+    glassEdgeEnd: Color(0x1FFFFFFF),
     // 玻璃弹层 shadow 调轻（玻璃自身已有层次）
     panelShadowColor: Color(0x26000000),
     cardShadowColor: Color(0x0F000000),
