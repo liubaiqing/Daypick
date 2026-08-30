@@ -47,7 +47,8 @@ class _AppShellState extends ConsumerState<AppShell> {
               children: [
                 // 1) 装饰背景：模拟桌面壁纸的柔和光斑（供模糊层采样）
                 const _GlassBackdrop(),
-                // 2) 全屏毛玻璃：高斯模糊 + 白渐变着色（左上高光 → 右下通透）
+                // 2) 全屏毛玻璃：高斯模糊 + 低透明白渐变着色（左上高光 → 右下通透；
+                //    白度必须低，否则会盖住光斑、失去透明感）
                 BackdropFilter(
                   filter: ImageFilter.blur(
                     sigmaX: tokens.glassBlurSigma,
@@ -57,8 +58,8 @@ class _AppShellState extends ConsumerState<AppShell> {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          tokens.mainBackground,
-                          tokens.mainBackground.withValues(alpha: 0.8),
+                          Colors.white.withValues(alpha: 0.35),
+                          Colors.white.withValues(alpha: 0.18),
                         ],
                         begin: const Alignment(-0.8, -0.8),
                         end: const Alignment(0.6, 0.7),
@@ -77,8 +78,11 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   Widget _buildBody(BuildContext context) {
     final tokens = DSTokensScope.of(context);
+    final isGlass = tokens.glassBlurSigma > 0;
+    // 毛玻璃主题：内容层背景必须透明，让下方模糊玻璃层透出
+    // （不透明背景会把 BackdropFilter 效果完全盖死）
     return ColoredBox(
-      color: tokens.mainBackground,
+      color: isGlass ? Colors.transparent : tokens.mainBackground,
       child: Column(
         children: [
           const _TitleBar(),
@@ -120,7 +124,7 @@ class _GlassBackdrop extends StatelessWidget {
           left: -120,
           top: -80,
           child: _Glow(
-            colors: const [Color(0x664DA3FF), Color(0x004DA3FF)],
+            colors: const [Color(0x8C4DA3FF), Color(0x004DA3FF)],
             size: 420,
           ),
         ),
@@ -129,7 +133,7 @@ class _GlassBackdrop extends StatelessWidget {
           right: -100,
           top: 60,
           child: _Glow(
-            colors: const [Color(0x55A78BFA), Color(0x00A78BFA)],
+            colors: const [Color(0x80A78BFA), Color(0x00A78BFA)],
             size: 380,
           ),
         ),
@@ -138,7 +142,7 @@ class _GlassBackdrop extends StatelessWidget {
           left: 40,
           bottom: -120,
           child: _Glow(
-            colors: const [Color(0x55FB7185), Color(0x00FB7185)],
+            colors: const [Color(0x80FB7185), Color(0x00FB7185)],
             size: 400,
           ),
         ),
@@ -147,7 +151,7 @@ class _GlassBackdrop extends StatelessWidget {
           right: 20,
           bottom: 40,
           child: _Glow(
-            colors: const [Color(0x4434D399), Color(0x0034D399)],
+            colors: const [Color(0x7034D399), Color(0x0034D399)],
             size: 320,
           ),
         ),
@@ -230,8 +234,10 @@ class _TitleBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = DSTokensScope.of(context);
+    // 毛玻璃主题：标题栏背景透明（让模糊玻璃层透出），仅保留 hover 按钮底色
+    final isGlass = tokens.glassBlurSigma > 0;
     return ColoredBox(
-      color: tokens.sidebarBackground,
+      color: isGlass ? Colors.transparent : tokens.sidebarBackground,
       child: SizedBox(
         height: 38,
         child: Row(
