@@ -614,7 +614,9 @@ class _SectionCard extends StatelessWidget {
     final tokens = DSTokensScope.of(context);
     return DSGlassSurface(
       borderRadius: BorderRadius.circular(kRadiusCard),
-      // 毛玻璃主题下分区卡片亦呈玻璃质感；浅色/深色保持原卡片视觉
+      // 毛玻璃主题下分区卡片呈玻璃质感（着色+描边，不嵌套模糊——
+      // 弹窗已提供模糊，避免"左白右黑"采样异常）；浅色/深色保持原卡片视觉
+      blur: false,
       fallbackColor: tokens.cardBackground,
       fallbackShadow: false,
       border: Border.all(color: tokens.divider),

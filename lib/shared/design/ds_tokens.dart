@@ -183,9 +183,10 @@ class DSTokens {
     glassSurface: Color(0xBFFFFFFF),
     glassBorder: Color(0x0F000000),
     glassBlurSigma: 20,
-    // 玻璃反光渐变：左上高光白 0.4 → 右下透明（教程参数，模拟光源反射）
-    glassTintStart: Color(0x66FFFFFF),
-    glassTintEnd: Color(0x1AFFFFFF),
+    // 玻璃反光渐变：左上高光白 0.32 → 右下淡白 0.2（两端均保持白底，
+    // 避免透明端露出背后暗色造成"左白右黑"）
+    glassTintStart: Color(0x52FFFFFF),
+    glassTintEnd: Color(0x33FFFFFF),
     // 边缘渐变描边：白 0.5 → 白 0.12（玻璃边缘反射）
     glassEdgeStart: Color(0x80FFFFFF),
     glassEdgeEnd: Color(0x1FFFFFFF),
