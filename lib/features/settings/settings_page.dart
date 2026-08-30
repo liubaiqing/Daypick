@@ -364,36 +364,23 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
         // ---- 主题（文档 11 章：浅色/深色/毛玻璃三选一）----
         _SectionCard(
           title: '主题',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '界面配色（毛玻璃为 Apple Liquid Glass 动态折射质感）',
-                style: TextStyle(
-                  fontSize: kFontSizeSmall,
-                  color: tokens.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              DSSegmentedControl(
-                key: const ValueKey('settings-theme-segment'),
-                options: const [
-                  (label: '浅色', enabled: true, tooltip: null),
-                  (label: '深色', enabled: true, tooltip: null),
-                  (label: '毛玻璃', enabled: true, tooltip: null),
-                ],
-                selectedIndex: switch (_themeMode) {
-                  kThemeModeDark => 1,
-                  kThemeModeGlass => 2,
-                  _ => 0,
-                },
-                onChanged: (i) => _setThemeMode(switch (i) {
-                  1 => kThemeModeDark,
-                  2 => kThemeModeGlass,
-                  _ => kThemeModeLight,
-                }),
-              ),
+          child: DSSegmentedControl(
+            key: const ValueKey('settings-theme-segment'),
+            options: const [
+              (label: '浅色', enabled: true, tooltip: null),
+              (label: '深色', enabled: true, tooltip: null),
+              (label: '毛玻璃', enabled: true, tooltip: null),
             ],
+            selectedIndex: switch (_themeMode) {
+              kThemeModeDark => 1,
+              kThemeModeGlass => 2,
+              _ => 0,
+            },
+            onChanged: (i) => _setThemeMode(switch (i) {
+              1 => kThemeModeDark,
+              2 => kThemeModeGlass,
+              _ => kThemeModeLight,
+            }),
           ),
         ),
         const SizedBox(height: 14),
@@ -554,14 +541,6 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                '导出文件保存在你选择的位置；恢复按 id 合并，已存在的事件跳过。备份不含 API Key。删除的事件先进回收站，可恢复。',
-                style: TextStyle(
-                  fontSize: kFontSizeSmall,
-                  color: tokens.textSecondary,
-                ),
-              ),
             ],
           ),
         ),
@@ -570,25 +549,12 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
         // ---- 关于 ----
         _SectionCard(
           title: '关于',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'calendar v1.0.4+1 · Windows 桌面关键事务日历',
-                style: TextStyle(
-                  fontSize: kFontSizeBody,
-                  color: tokens.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '本应用使用 HarmonyOS Sans 字体（华为开源字体，免费商用；许可协议见随包 LICENSE 文件）',
-                style: TextStyle(
-                  fontSize: kFontSizeSmall,
-                  color: tokens.textSecondary,
-                ),
-              ),
-            ],
+          child: Text(
+            'calendar v1.0.4+1 · Windows 桌面关键事务日历',
+            style: TextStyle(
+              fontSize: kFontSizeBody,
+              color: tokens.textPrimary,
+            ),
           ),
         ),
       ],

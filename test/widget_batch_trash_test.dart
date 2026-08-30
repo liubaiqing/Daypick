@@ -266,6 +266,26 @@ void main() {
     expect(find.text('已选 0 个'), findsOneWidget);
   });
 
+  testWidgets('设置页移除冗余小字并收紧对应分组', (tester) async {
+    await pumpApp(tester);
+    await openSettings(tester);
+
+    expect(find.textContaining('界面配色'), findsNothing);
+
+    await scrollSettingsTo(
+      tester,
+      find.byKey(const ValueKey('settings-batch-delete')),
+    );
+    expect(find.textContaining('导出文件保存在'), findsNothing);
+
+    await scrollSettingsTo(
+      tester,
+      find.text('calendar v1.0.4+1 · Windows 桌面关键事务日历'),
+    );
+    expect(find.textContaining('本应用使用 HarmonyOS Sans 字体'), findsNothing);
+    expect(find.text('calendar v1.0.4+1 · Windows 桌面关键事务日历'), findsOneWidget);
+  });
+
   testWidgets('设置页主题三选一：切换即时生效并持久化', (tester) async {
     await pumpApp(tester);
     await openSettings(tester);
