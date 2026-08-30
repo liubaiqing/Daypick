@@ -173,9 +173,10 @@ class DSTokens {
     successGreen: Color(0xFF34C759),
     warningOrange: Color(0xFFFF9500),
     yellow: Color(0xFFFFCC00),
-    // 毛玻璃主题下的柔和强调色（设置窗口按钮/开关用，玻璃材质上不刺眼）
-    softAccentBlue: Color(0xE67FAEE8),
-    softSuccessGreen: Color(0xE67CC99B),
+    // 毛玻璃主题下的柔和强调色（设置窗口按钮/开关用：
+    // 比主色低一档饱和度，避免刺眼，但保持鲜活不发灰）
+    softAccentBlue: Color(0xFF4D8FE0),
+    softSuccessGreen: Color(0xFF45B97C),
     windowButtonClose: Color(0xFFFF5F57),
     windowButtonMinimize: Color(0xFFFEBC2E),
     windowButtonMaximize: Color(0xFF28C840),
