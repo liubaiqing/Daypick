@@ -310,7 +310,8 @@ void main() {
     expect(tokensOf().glassBlurSigma, greaterThan(0));
     expect(tokensOf().textPrimary, DSTokens.light.textPrimary);
 
-    // 主界面毛玻璃：全屏 BackdropFilter（装饰背景模糊层）
+    // 主界面毛玻璃（HIG）：窗口主背景为实色（无整窗模糊），
+    // 玻璃质感由浮层呈现——输入条（AppShell 内的 BackdropFilter）与分区卡片
     expect(
       find.descendant(
         of: find.byType(AppShell),
