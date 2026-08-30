@@ -163,8 +163,9 @@ class DSTokens {
     mainBackground: Color(0xA6FFFFFF),
     // 卡片/输入条：半透明白 0.75 + blur 20
     cardBackground: Color(0xBFFFFFFF),
-    // 弹层：半透明白 0.85 + blur 24 + hairline
-    dialogBackground: Color(0xD9FFFFFF),
+    // 弹层：高不透明度半透明白（叠在 0.32 遮罩上仍保持明亮，
+    // 避免透出遮罩暗色让弹窗整体变暗；保留玻璃透感）
+    dialogBackground: Color(0xF0FFFFFF),
     textPrimary: Color(0xD9000000),
     textSecondary: Color(0x80000000),
     divider: Color(0x1A000000),
