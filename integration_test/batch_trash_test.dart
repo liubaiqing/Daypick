@@ -71,6 +71,24 @@ void main() {
         warnIfMissed: false);
     await tester.pump(const Duration(milliseconds: 300));
 
+    // 主题三选一（文档 11 章）：切深色/毛玻璃即时生效不挂起
+    await tester.drag(
+      find.descendant(
+        of: find.byType(SettingsDialogBody),
+        matching: find.byType(ListView),
+      ),
+      const Offset(0, 400),
+    );
+    await tester.pump(const Duration(milliseconds: 200));
+    if (tester.any(find.text('毛玻璃'))) {
+      await tester.tap(find.text('毛玻璃'), warnIfMissed: false);
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.text('深色'), warnIfMissed: false);
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.text('浅色'), warnIfMissed: false);
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
     // 关闭设置
     await tester.tap(find.byKey(const ValueKey('settings-close')),
         warnIfMissed: false);

@@ -9,6 +9,7 @@ import '../../data/db/providers.dart';
 import '../../domain/parsed_event.dart';
 import '../../shared/design/ds_button.dart';
 import '../../shared/design/ds_dialog.dart';
+import '../../shared/design/ds_glass_surface.dart';
 import '../../shared/design/ds_tokens.dart';
 import '../../shared/design/dstokens_scope.dart';
 import 'confirm_card.dart';
@@ -111,21 +112,10 @@ class _ParseResultPanelState extends ConsumerState<_ParseResultPanel> {
     final tokens = DSTokensScope.of(context);
     final unsaved = _unsavedCount;
     return Center(
-      child: Container(
+      child: DSGlassSurface(
         width: 680,
         constraints: BoxConstraints(
           maxHeight: MediaQuery.sizeOf(context).height * 0.8,
-        ),
-        decoration: BoxDecoration(
-          color: tokens.cardBackground,
-          borderRadius: BorderRadius.circular(kRadiusPanel),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x40000000),
-              blurRadius: 24,
-              offset: Offset(0, 8),
-            ),
-          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

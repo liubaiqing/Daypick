@@ -310,11 +310,11 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
               color: tokens.cardBackground,
               borderRadius: BorderRadius.circular(kRadiusComposer),
               border: Border.all(color: tokens.divider),
-              boxShadow: const [
+              boxShadow: [
                 BoxShadow(
-                  color: Color(0x14000000),
+                  color: tokens.cardShadowColor,
                   blurRadius: 8,
-                  offset: Offset(0, 2),
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),

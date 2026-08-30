@@ -59,3 +59,9 @@ final animationsEnabledProvider = FutureProvider<bool>((ref) async {
   final v = await ref.watch(settingsDaoProvider).get(kSettingAnimationsEnabled);
   return v != '0';
 });
+
+/// 主题模式（设置页"外观"三选一：light/dark/glass；切换后 invalidate 刷新）
+final themeModeProvider = FutureProvider<String>((ref) async {
+  return await ref.watch(settingsDaoProvider).get(kSettingThemeMode) ??
+      kDefaultThemeMode;
+});

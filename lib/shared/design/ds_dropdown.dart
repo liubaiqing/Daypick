@@ -105,14 +105,14 @@ class _DSDropdownState<T> extends State<DSDropdown<T>> {
           child: Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: tokens.cardBackground,
+              color: tokens.dialogBackground,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: tokens.divider),
-              boxShadow: const [
+              boxShadow: [
                 BoxShadow(
-                  color: Color(0x33000000),
+                  color: tokens.panelShadowColor,
                   blurRadius: 12,
-                  offset: Offset(0, 4),
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),

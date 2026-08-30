@@ -10,6 +10,7 @@ import '../../data/db/database.dart';
 import '../../data/db/providers.dart';
 import '../../shared/design/ds_button.dart';
 import '../../shared/design/ds_dialog.dart';
+import '../../shared/design/ds_glass_surface.dart';
 import '../../shared/design/ds_tokens.dart';
 import '../../shared/design/dstokens_scope.dart';
 
@@ -27,23 +28,11 @@ Future<bool?> showTrashDialog(BuildContext context) {
     barrierColor: Colors.black.withValues(alpha: 0.32),
     transitionDuration: transition,
     pageBuilder: (context, _, _) {
-      final tokens = DSTokensScope.of(context);
       return Center(
-        child: Container(
+        child: DSGlassSurface(
           width: 560,
           constraints: BoxConstraints(
             maxHeight: MediaQuery.sizeOf(context).height * 0.82,
-          ),
-          decoration: BoxDecoration(
-            color: tokens.cardBackground,
-            borderRadius: BorderRadius.circular(kRadiusPanel),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x40000000),
-                blurRadius: 24,
-                offset: Offset(0, 8),
-              ),
-            ],
           ),
           child: const TrashDialogBody(),
         ),

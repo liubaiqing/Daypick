@@ -2,12 +2,17 @@
 // 使用内存 drift 库注入，验证：月份列表/勾选/全选/已选计数/删除进回收站、
 // 回收站恢复与彻底清理、空态。
 import 'package:calendar/app/app.dart';
+import 'package:calendar/core/constants.dart';
 import 'package:calendar/data/db/database.dart';
 import 'package:calendar/data/db/event_dao.dart';
 import 'package:calendar/data/db/providers.dart';
+import 'package:calendar/data/db/settings_dao.dart';
 import 'package:calendar/domain/event_source_type.dart';
 import 'package:calendar/features/settings/settings_page.dart';
+import 'package:calendar/features/shell/app_shell.dart';
 import 'package:calendar/shared/design/ds_button.dart';
+import 'package:calendar/shared/design/ds_tokens.dart';
+import 'package:calendar/shared/design/dstokens_scope.dart';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -66,7 +71,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
   }
 
-  /// 设置弹窗 ListView 懒加载：滚动到数据管理区（拖拽直至目标可见）
+  /// 设置弹窗 ListView 懒加载：滚动到数据管理区（拖拽直至目标可见，
+  /// 再 ensureVisible 确保完全进入视口，避免边缘遮挡）
   Future<void> scrollSettingsTo(WidgetTester tester, Finder target) async {
     final listView = find.descendant(
       of: find.byType(SettingsDialogBody),
@@ -75,6 +81,10 @@ void main() {
     for (var i = 0; i < 10 && target.evaluate().isEmpty; i++) {
       await tester.drag(listView, const Offset(0, -250));
       await tester.pump(const Duration(milliseconds: 80));
+    }
+    if (target.evaluate().isNotEmpty) {
+      await tester.ensureVisible(target);
+      await tester.pump(const Duration(milliseconds: 100));
     }
   }
 
@@ -252,5 +262,59 @@ void main() {
 
     expect(find.text('这个月没有事件'), findsOneWidget);
     expect(find.text('已选 0 个'), findsOneWidget);
+  });
+
+  testWidgets('设置页主题三选一：切换即时生效并持久化', (tester) async {
+    await pumpApp(tester);
+    await openSettings(tester);
+
+    // 滚动到外观区的主题分段控件
+    await scrollSettingsTo(
+      tester,
+      find.byKey(const ValueKey('settings-theme-segment')),
+    );
+    expect(find.text('毛玻璃'), findsOneWidget);
+
+    // 默认浅色：DSTokensScope 提供 light
+    DSTokens tokensOf() => DSTokensScope.of(
+          tester.element(find.byType(AppShell)),
+        );
+    expect(tokensOf().glassBlurSigma, 0);
+    expect(tokensOf().mainBackground, DSTokens.light.mainBackground);
+
+    // 切深色：token 立即变为 dark（亮度分层 + 无投影）
+    await tester.tap(find.text('深色'));
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 120)),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(tokensOf().mainBackground, DSTokens.dark.mainBackground);
+    expect(tokensOf().dialogBackground, DSTokens.dark.dialogBackground);
+    // 持久化到数据库
+    expect(
+      await tester.runAsync(
+        () => SettingsDao(db).get(kSettingThemeMode),
+      ),
+      kThemeModeDark,
+    );
+
+    // 切毛玻璃：token 变为 glass（启用模糊与 hairline）
+    await tester.tap(find.text('毛玻璃'));
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 120)),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(tokensOf().glassBlurSigma, greaterThan(0));
+    expect(tokensOf().textPrimary, DSTokens.light.textPrimary);
+
+    // 收尾
+    await tester.tap(find.byKey(const ValueKey('settings-close')));
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pumpWidget(const SizedBox());
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
   });
 }

@@ -235,11 +235,11 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
         border: Border.all(
           color: saved ? tokens.successGreen.withValues(alpha: 0.4) : tokens.divider,
         ),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x14000000),
+            color: tokens.cardShadowColor,
             blurRadius: 3,
-            offset: Offset(0, 1),
+            offset: const Offset(0, 1),
           ),
         ],
       ),

@@ -25,6 +25,11 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     // 主题 token 由 CalendarApp 的 MaterialApp.builder 提供（覆盖 Navigator 与全部弹层）
+    final tokens = DSTokensScope.of(context);
+    // 毛玻璃主题：主背景为半透明白，叠在不透明基座上（应用内无桌面内容可透，
+    // 玻璃观感由弹层/输入条的 BackdropFilter 呈现，文档 9.4.2）
+    final baseColor =
+        tokens.glassBlurSigma > 0 ? Colors.white : tokens.mainBackground;
     return DropTarget(
       // 全窗口拖拽图片：路径写入 provider，由日历页输入条消费（文档 8 章调整）
       onDragDone: (details) {
@@ -37,27 +42,30 @@ class _AppShellState extends ConsumerState<AppShell> {
         }
       },
       child: ColoredBox(
-        color: DSTokensScope.of(context).mainBackground,
-        child: Column(
-          children: [
-            const _TitleBar(),
-            Expanded(
-              child: Stack(
-                children: [
-                  // 日历占满整个内容区（无侧边栏）
-                  const Positioned.fill(child: CalendarPage()),
-                  // 左下角设置圆钮
-                  Positioned(
-                    left: 20,
-                    bottom: 16,
-                    child: _SettingsButton(
-                      onTap: () => showSettingsDialog(context),
+        color: baseColor,
+        child: ColoredBox(
+          color: tokens.mainBackground,
+          child: Column(
+            children: [
+              const _TitleBar(),
+              Expanded(
+                child: Stack(
+                  children: [
+                    // 日历占满整个内容区（无侧边栏）
+                    const Positioned.fill(child: CalendarPage()),
+                    // 左下角设置圆钮
+                    Positioned(
+                      left: 20,
+                      bottom: 16,
+                      child: _SettingsButton(
+                        onTap: () => showSettingsDialog(context),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

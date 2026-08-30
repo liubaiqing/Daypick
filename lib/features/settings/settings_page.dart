@@ -16,6 +16,8 @@ import '../../data/llm/openai_compatible_client.dart';
 import '../../domain/llm_providers.dart';
 import '../../shared/design/ds_button.dart';
 import '../../shared/design/ds_dropdown.dart';
+import '../../shared/design/ds_glass_surface.dart';
+import '../../shared/design/ds_segmented_control.dart';
 import '../../shared/design/ds_switch.dart';
 import '../../shared/design/ds_text_field.dart';
 import '../../shared/design/ds_tokens.dart';
@@ -37,23 +39,11 @@ Future<void> showSettingsDialog(BuildContext context) {
     barrierColor: Colors.black.withValues(alpha: 0.32),
     transitionDuration: transition,
     pageBuilder: (context, _, _) {
-      final tokens = DSTokensScope.of(context);
       return Center(
-        child: Container(
+        child: DSGlassSurface(
           width: 560,
           constraints: BoxConstraints(
             maxHeight: MediaQuery.sizeOf(context).height * 0.82,
-          ),
-          decoration: BoxDecoration(
-            color: tokens.cardBackground,
-            borderRadius: BorderRadius.circular(kRadiusPanel),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x40000000),
-                blurRadius: 24,
-                offset: Offset(0, 8),
-              ),
-            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -67,7 +57,7 @@ Future<void> showSettingsDialog(BuildContext context) {
                       style: TextStyle(
                         fontSize: kFontSizeTitle,
                         fontWeight: FontWeight.w700,
-                        color: tokens.textPrimary,
+                        color: DSTokensScope.of(context).textPrimary,
                       ),
                     ),
                     const Spacer(),
@@ -78,7 +68,7 @@ Future<void> showSettingsDialog(BuildContext context) {
                   ],
                 ),
               ),
-              Container(height: 1, color: tokens.divider),
+              Container(height: 1, color: DSTokensScope.of(context).divider),
               Expanded(child: SettingsDialogBody()),
             ],
           ),
@@ -153,6 +143,7 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
   bool _testing = false;
   bool _dataBusy = false;
   bool _animationsEnabled = true;
+  String _themeMode = kDefaultThemeMode;
   String? _testResult; // null=未测试, 'ok'=成功, 其他=失败信息
   LlmProviderPreset? _selectedPreset; // null = 自定义
 
@@ -176,12 +167,14 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
     final key = await dao.get(kSettingLlmApiKey) ?? '';
     final model = await dao.get(kSettingLlmModel) ?? kDefaultLlmModel;
     final anims = await dao.get(kSettingAnimationsEnabled);
+    final theme = await dao.get(kSettingThemeMode);
     if (!mounted) return;
     setState(() {
       _baseUrlCtrl.text = base;
       _apiKeyCtrl.text = key;
       _modelCtrl.text = model;
       _animationsEnabled = anims != '0';
+      _themeMode = theme ?? kDefaultThemeMode;
       // 按 baseURL 反查预设回显；未匹配视为自定义
       _selectedPreset = presetForBaseUrl(base);
       _loaded = true;
@@ -195,6 +188,12 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
       enabled ? '1' : '0',
     );
     ref.invalidate(animationsEnabledProvider);
+  }
+
+  Future<void> _setThemeMode(String mode) async {
+    setState(() => _themeMode = mode);
+    await ref.read(settingsDaoProvider).set(kSettingThemeMode, mode);
+    ref.invalidate(themeModeProvider);
   }
 
   Future<void> _save() async {
@@ -356,6 +355,43 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
               DSSwitch(
                 value: _animationsEnabled,
                 onChanged: _toggleAnimations,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // ---- 主题（文档 11 章：浅色/深色/毛玻璃三选一）----
+        _SectionCard(
+          title: '主题',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '界面配色（毛玻璃为苹果风格玻璃半透明质感）',
+                style: TextStyle(
+                  fontSize: kFontSizeSmall,
+                  color: tokens.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              DSSegmentedControl(
+                key: const ValueKey('settings-theme-segment'),
+                options: const [
+                  (label: '浅色', enabled: true, tooltip: null),
+                  (label: '深色', enabled: true, tooltip: null),
+                  (label: '毛玻璃', enabled: true, tooltip: null),
+                ],
+                selectedIndex: switch (_themeMode) {
+                  kThemeModeDark => 1,
+                  kThemeModeGlass => 2,
+                  _ => 0,
+                },
+                onChanged: (i) => _setThemeMode(switch (i) {
+                  1 => kThemeModeDark,
+                  2 => kThemeModeGlass,
+                  _ => kThemeModeLight,
+                }),
               ),
             ],
           ),

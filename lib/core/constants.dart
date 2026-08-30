@@ -15,6 +15,7 @@ const String kSettingLlmApiKey = 'llmApiKey';
 const String kSettingLlmModel = 'llmModel';
 const String kSettingSidebarCollapsed = 'sidebarCollapsed'; // '1' 收起 / '0' 展开
 const String kSettingAnimationsEnabled = 'animationsEnabled'; // '0' 关闭动画 / 默认开启
+const String kSettingThemeMode = 'themeMode'; // 主题三选一（文档 4.1/9.4 节）
 
 /// 解析模式取值（settings.parseMode）
 const String kParseModeLocal = 'local';
@@ -22,6 +23,14 @@ const String kParseModeAi = 'ai';
 
 /// 默认解析模式：本地模式（离线可用、无需 API Key）
 const String kDefaultParseMode = kParseModeLocal;
+
+// ---- 主题模式（settings.themeMode，文档 4.1/9.4 节）----
+const String kThemeModeLight = 'light';
+const String kThemeModeDark = 'dark';
+const String kThemeModeGlass = 'glass';
+
+/// 默认主题：浅色
+const String kDefaultThemeMode = kThemeModeLight;
 
 // ---- 默认 LLM 配置（OpenAI 兼容，用户可在设置页覆盖）----
 const String kDefaultLlmBaseUrl = 'https://api.deepseek.com';

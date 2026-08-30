@@ -98,11 +98,11 @@ class _DSSegmentedControlState extends State<DSSegmentedControl> {
                 decoration: BoxDecoration(
                   color: tokens.cardBackground,
                   borderRadius: BorderRadius.circular(6),
-                  boxShadow: const [
+                  boxShadow: [
                     BoxShadow(
-                      color: Color(0x1A000000),
+                      color: tokens.cardShadowColor,
                       blurRadius: 2,
-                      offset: Offset(0, 1),
+                      offset: const Offset(0, 1),
                     ),
                   ],
                 ),
