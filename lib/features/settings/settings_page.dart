@@ -33,7 +33,10 @@ Future<void> showSettingsDialog(BuildContext context) {
         listen: false,
       ).read(animationsEnabledProvider).value ??
       true;
-  final transition = animOn ? kDurationQuick : Duration.zero;
+  final initialGlass = tokens.glassBlurSigma > 0;
+  final transition = animOn
+      ? (initialGlass ? kDurationGlassDialog : kDurationQuick)
+      : Duration.zero;
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
@@ -78,16 +81,32 @@ Future<void> showSettingsDialog(BuildContext context) {
         ),
       );
     },
-    transitionBuilder: (context, animation, _, child) => FadeTransition(
-      opacity: animation,
-      child: ScaleTransition(
-        scale: Tween<double>(
-          begin: 0.97,
-          end: 1.0,
-        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
-        child: child,
-      ),
-    ),
+    transitionBuilder: (context, animation, _, child) {
+      final isGlass = DSTokensScope.of(context).glassBlurSigma > 0;
+      if (isGlass) {
+        return FadeTransition(
+          key: const ValueKey('settings-glass-fade'),
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          ),
+          child: child,
+        );
+      }
+      return FadeTransition(
+        key: const ValueKey('settings-dialog-fade'),
+        opacity: animation,
+        child: ScaleTransition(
+          key: const ValueKey('settings-dialog-scale'),
+          scale: Tween<double>(
+            begin: 0.97,
+            end: 1.0,
+          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
+          child: child,
+        ),
+      );
+    },
   );
 }
 

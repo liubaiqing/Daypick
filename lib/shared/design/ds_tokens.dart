@@ -206,4 +206,5 @@ const double kFontSizeLargeTitle = 20;
 
 // ---- 动效时长（见文档 9.5 节）----
 const Duration kDurationQuick = Duration(milliseconds: 150);
+const Duration kDurationGlassDialog = Duration(milliseconds: 220);
 const Duration kDurationNormal = Duration(milliseconds: 200);

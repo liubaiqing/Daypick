@@ -332,6 +332,8 @@ void main() {
     expect(tokensOf().glassBlurSigma, greaterThan(0));
     expect(tokensOf().textPrimary, DSTokens.glass.textPrimary);
     expect(tokensOf().accentBlue, const Color(0xFF3D7EC5));
+    expect(find.byKey(const ValueKey('settings-glass-fade')), findsOneWidget);
+    expect(find.byKey(const ValueKey('settings-dialog-scale')), findsNothing);
     expect(
       tester.widget(find.byKey(const ValueKey('settings-section-theme'))),
       isA<Padding>(),
@@ -381,7 +383,7 @@ void main() {
 
     // 收尾
     await tester.tap(find.byKey(const ValueKey('settings-close')));
-    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 250));
     await tester.pumpWidget(const SizedBox());
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 50)),
