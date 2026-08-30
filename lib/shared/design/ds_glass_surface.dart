@@ -5,6 +5,7 @@
 library;
 
 import 'dart:ui';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -108,15 +109,18 @@ class _DSGlassSurfaceState extends State<DSGlassSurface> {
 
   Widget _buildLiquidGlass(DSTokens tokens, BorderRadius radius) {
     final isDialog = widget.kind == DSGlassSurfaceKind.dialog;
-    final materialColor =
-        isDialog ? tokens.dialogBackground : tokens.glassSurface;
+    final materialColor = isDialog
+        ? tokens.dialogBackground
+        : tokens.glassSurface;
     final baseColor = widget.tint == null
         ? materialColor
         : Color.alphaBlend(widget.tint!, materialColor);
-    final blurSigma =
-        isDialog ? tokens.glassDialogBlurSigma : tokens.glassBlurSigma;
-    final shadowColor =
-        isDialog ? tokens.panelShadowColor : tokens.cardShadowColor;
+    final blurSigma = isDialog
+        ? tokens.glassDialogBlurSigma
+        : tokens.glassBlurSigma;
+    final shadowColor = isDialog
+        ? tokens.panelShadowColor
+        : tokens.cardShadowColor;
 
     return MouseRegion(
       onEnter: (event) => _updatePointer(event),
@@ -143,16 +147,17 @@ class _DSGlassSurfaceState extends State<DSGlassSurface> {
                 constraints.hasBoundedWidth ? constraints.maxWidth : 0,
                 constraints.hasBoundedHeight ? constraints.maxHeight : 0,
               );
+              final isCompactControl =
+                  !isDialog &&
+                  size.shortestSide <= 48 &&
+                  size.width <= size.height * 1.5;
               final refractScale = isDialog ? 1.008 : 1.018;
               final lensMatrix = Matrix4.identity()
                 ..translateByDouble(size.width / 2, size.height / 2, 0, 1)
                 ..scaleByDouble(refractScale, refractScale, 1, 1)
                 ..translateByDouble(-size.width / 2, -size.height / 2, 0, 1);
               final filter = ImageFilter.compose(
-                outer: ImageFilter.blur(
-                  sigmaX: blurSigma,
-                  sigmaY: blurSigma,
-                ),
+                outer: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
                 inner: ImageFilter.matrix(
                   lensMatrix.storage,
                   filterQuality: FilterQuality.medium,
@@ -162,19 +167,25 @@ class _DSGlassSurfaceState extends State<DSGlassSurface> {
                 decoration: BoxDecoration(
                   borderRadius: radius,
                   boxShadow: [
-                    BoxShadow(
-                      color: tokens.accentBlue.withValues(
-                        alpha: isDialog ? 0.06 : 0.1,
+                    if (isDialog)
+                      BoxShadow(
+                        color: tokens.accentBlue.withValues(alpha: 0.025),
+                        offset: const Offset(-4, -2),
+                        blurRadius: 30,
+                        spreadRadius: -5,
                       ),
-                      offset: const Offset(-4, -2),
-                      blurRadius: isDialog ? 30 : 22,
-                      spreadRadius: -5,
-                    ),
                     BoxShadow(
-                      color: shadowColor,
-                      offset: Offset(0, isDialog ? 16 : 9),
-                      blurRadius: isDialog ? 44 : 26,
-                      spreadRadius: isDialog ? -9 : -5,
+                      color: isCompactControl
+                          ? shadowColor.withValues(alpha: 0.1)
+                          : shadowColor,
+                      offset: Offset(
+                        0,
+                        isDialog ? 16 : (isCompactControl ? 4 : 9),
+                      ),
+                      blurRadius: isDialog ? 44 : (isCompactControl ? 10 : 26),
+                      spreadRadius: isDialog
+                          ? -9
+                          : (isCompactControl ? -2 : -5),
                     ),
                   ],
                 ),
@@ -198,19 +209,12 @@ class _DSGlassSurfaceState extends State<DSGlassSurface> {
                                 tokens.glassTintStart,
                                 baseColor,
                               ),
-                              Color.alphaBlend(
-                                tokens.glassTintEnd,
-                                baseColor,
-                              ),
+                              Color.alphaBlend(tokens.glassTintEnd, baseColor),
                             ],
                             begin: const Alignment(-1, -1),
                             end: const Alignment(0.75, 0.8),
                           ),
-                          border: widget.border ??
-                              Border.all(
-                                color: tokens.glassBorder,
-                                width: 0.8,
-                              ),
+                          border: widget.border,
                         ),
                         child: widget.child,
                       ),
@@ -226,7 +230,8 @@ class _DSGlassSurfaceState extends State<DSGlassSurface> {
   }
 }
 
-/// 多层透镜边缘：亮边、暗部折射、轻微色散与跟随指针的镜面高光。
+/// 连续弧面透镜边缘：宽边缘带负责圆润曲率，柔化内缘和极细外高光
+/// 负责玻璃边界，避免用彩色硬描边模拟反射。
 class _LiquidGlassPainter extends CustomPainter {
   const _LiquidGlassPainter({
     required this.radius,
@@ -244,49 +249,88 @@ class _LiquidGlassPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (size.isEmpty) return;
     final rect = Offset.zero & size;
-    final rrect = radius.toRRect(rect).deflate(0.75);
+    final outerRRect = radius.toRRect(rect).deflate(0.55);
+    final desiredDepth = size.shortestSide * (isDialog ? 0.035 : 0.11);
+    final maximumDepth = math.max(0.75, size.shortestSide / 2 - 0.75);
+    final edgeDepth = math.min(
+      desiredDepth.clamp(isDialog ? 7.0 : 4.0, isDialog ? 13.0 : 9.0),
+      maximumDepth,
+    );
+    final innerRRect = outerRRect.deflate(edgeDepth);
+    final edgeBand = Path()
+      ..fillType = PathFillType.evenOdd
+      ..addRRect(outerRRect)
+      ..addRRect(innerRRect);
 
-    final rimPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = isDialog ? 1.2 : 1.5
+    canvas.save();
+    canvas.clipRRect(outerRRect);
+
+    // 先铺一层低强度、覆盖整面的环境反射，让宽边缘不是独立色环。
+    final ambientGlaze = Paint()
+      ..blendMode = BlendMode.screen
+      ..shader = const RadialGradient(
+        center: Alignment(-0.55, -0.7),
+        radius: 1.25,
+        colors: [Color(0x28FFFFFF), Color(0x08FFFFFF), Colors.transparent],
+        stops: [0, 0.48, 1],
+      ).createShader(rect);
+    canvas.drawRect(rect, ambientGlaze);
+
+    // 宽透镜带以连续透明度表现凸起弧面；轻微模糊把内外边界融入表面。
+    final softBandPaint = Paint()
+      ..blendMode = BlendMode.screen
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, isDialog ? 3.2 : 2.1)
+      ..shader = const LinearGradient(
+        begin: Alignment(-0.85, -1),
+        end: Alignment(0.8, 1),
+        colors: [
+          Color(0x70FFFFFF),
+          Color(0x2EFFFFFF),
+          Color(0x0FFFFFFF),
+          Color(0x3AFFF8E8),
+        ],
+        stops: [0, 0.32, 0.68, 1],
+      ).createShader(rect);
+    canvas.drawPath(edgeBand, softBandPaint);
+
+    final lensBandPaint = Paint()
       ..shader = const SweepGradient(
         center: Alignment.center,
-        startAngle: -0.8,
-        endAngle: 5.5,
+        startAngle: -0.7,
+        endAngle: 5.58,
         colors: [
-          Color(0xE6FFFFFF),
-          Color(0x553EC8FF),
-          Color(0x24FFFFFF),
-          Color(0x443F2C76),
-          Color(0x30182736),
-          Color(0xCCFFFFFF),
-          Color(0xE6FFFFFF),
+          Color(0x55FFFFFF),
+          Color(0x24EAF7FF),
+          Color(0x0AFFFFFF),
+          Color(0x1217202B),
+          Color(0x22FFF7E5),
+          Color(0x4DFFFFFF),
+          Color(0x55FFFFFF),
         ],
-        stops: [0, 0.16, 0.34, 0.52, 0.7, 0.88, 1],
+        stops: [0, 0.18, 0.38, 0.58, 0.76, 0.9, 1],
       ).createShader(rect);
-    canvas.drawRRect(rrect, rimPaint);
+    canvas.drawPath(edgeBand, lensBandPaint);
 
-    final innerRect = rect.deflate(isDialog ? 2.2 : 2.5);
-    final innerRRect = radius.toRRect(innerRect);
-    final innerPaint = Paint()
+    // 柔和的内缘焦散把宽边缘平滑收束到中央清晰区。
+    final innerCausticPaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = isDialog ? 1.6 : 2
+      ..strokeWidth = isDialog ? 1.5 : 1.1
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, isDialog ? 1.8 : 1.1)
       ..shader = const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
         colors: [
-          Color(0x8FFFFFFF),
-          Color(0x10FFFFFF),
-          Color(0x26182736),
+          Color(0x52FFFFFF),
+          Color(0x0AFFFFFF),
+          Color(0x1817202B),
+          Color(0x3DFFFFFF),
         ],
-        stops: [0, 0.48, 1],
-      ).createShader(innerRect);
-    canvas.drawRRect(innerRRect, innerPaint);
+        stops: [0, 0.42, 0.72, 1],
+      ).createShader(rect);
+    canvas.drawRRect(innerRRect, innerCausticPaint);
 
     final point = pointer;
     if (hovered && point != null) {
-      canvas.save();
-      canvas.clipRRect(radius.toRRect(rect));
       final highlightRadius = isDialog ? 150.0 : 95.0;
       final highlightRect = Rect.fromCircle(
         center: point,
@@ -296,15 +340,33 @@ class _LiquidGlassPainter extends CustomPainter {
         ..blendMode = BlendMode.screen
         ..shader = RadialGradient(
           colors: [
-            Colors.white.withValues(alpha: isDialog ? 0.13 : 0.24),
-            const Color(0x163EC8FF),
+            Colors.white.withValues(alpha: isDialog ? 0.1 : 0.18),
+            const Color(0x0CEAF7FF),
             Colors.transparent,
           ],
-          stops: const [0, 0.34, 1],
+          stops: const [0, 0.42, 1],
         ).createShader(highlightRect);
       canvas.drawCircle(point, highlightRadius, highlightPaint);
-      canvas.restore();
     }
+
+    canvas.restore();
+
+    // 最外侧仅保留中性色、亚像素级高光，明确轮廓但不形成硬色环。
+    final outerHighlightPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.75
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0xE0FFFFFF),
+          Color(0x66FFFFFF),
+          Color(0x2417202B),
+          Color(0xB8FFFFFF),
+        ],
+        stops: [0, 0.42, 0.72, 1],
+      ).createShader(rect);
+    canvas.drawRRect(outerRRect, outerHighlightPaint);
   }
 
   @override

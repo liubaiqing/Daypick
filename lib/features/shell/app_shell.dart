@@ -384,13 +384,13 @@ class _SettingsButtonState extends State<_SettingsButton> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: _hovered
-                    ? tokens.accentBlue.withValues(alpha: 0.12)
+                    ? Colors.white.withValues(alpha: 0.1)
                     : Colors.transparent,
               ),
               child: Icon(
                 Icons.settings_outlined,
                 size: 20,
-                color: _hovered ? tokens.accentBlue : tokens.textSecondary,
+                color: _hovered ? tokens.textPrimary : tokens.textSecondary,
               ),
             ),
           ),
