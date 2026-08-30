@@ -254,7 +254,7 @@ class _MonthViewState extends ConsumerState<MonthView>
             ],
           ),
         ),
-        // 星期表头
+        // 星期表头（比日期字大一号的深色加粗，强化与日期区的层次分界）
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Row(
@@ -265,14 +265,17 @@ class _MonthViewState extends ConsumerState<MonthView>
                     label,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: kFontSizeSmall,
-                      color: tokens.textSecondary,
+                      fontSize: kFontSizeCaption,
+                      color: tokens.textPrimary,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
             ],
           ),
         ),
+        // 表头与网格之间的分隔线，强化结构分界
+        Container(height: 1, color: tokens.divider),
         const SizedBox(height: 4),
         // 网格 + 选中聚焦动画层
         Expanded(
