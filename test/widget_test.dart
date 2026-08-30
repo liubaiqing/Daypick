@@ -396,4 +396,38 @@ void main() {
     // 文本被粘贴进输入框（无图片时不拦截文本粘贴）
     expect(find.text('明天上午10点开会'), findsOneWidget);
   });
+
+  testWidgets('年月标题点击弹出年份选择器并可跨年跳转', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          monthEventsProvider.overrideWith(
+            (ref, arg) => Stream.value(const <Event>[]),
+          ),
+          dayEventsProvider.overrideWith(
+            (ref, arg) => Stream.value(const <Event>[]),
+          ),
+        ],
+        child: const CalendarApp(),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 50));
+
+    final now = DateTime.now();
+    final title = '${now.year}年${now.month}月';
+    expect(find.text(title), findsOneWidget);
+
+    // 点击年月标题 → 年份选择器弹出（含当前年与取消按钮）
+    await tester.tap(find.text(title));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('选择年份'), findsOneWidget);
+    expect(find.text('${now.year}'), findsWidgets);
+
+    // 选择上一年 → 标题跨年更新（保持同月）
+    final targetYear = now.year - 1;
+    await tester.tap(find.text('$targetYear'));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('选择年份'), findsNothing);
+    expect(find.text('$targetYear年${now.month}月'), findsOneWidget);
+  });
 }

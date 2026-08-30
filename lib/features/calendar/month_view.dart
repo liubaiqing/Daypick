@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/db/providers.dart';
 import '../../shared/design/ds_tokens.dart';
+import '../../shared/design/ds_year_picker.dart';
 import '../../shared/design/dstokens_scope.dart';
 
 class MonthView extends ConsumerStatefulWidget {
@@ -203,18 +204,25 @@ class _MonthViewState extends ConsumerState<MonthView>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // 顶栏：年月标题 + 翻页 + 今天（文档 10.1）
+        // 顶栏：年月标题（hover 浮现圆角轮廓提示可点击，点击弹年份选择器跨年跳转）+ 翻页 + 今天（文档 10.1）
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
           child: Row(
             children: [
-              Text(
-                '${widget.month.year}年${widget.month.month}月',
-                style: TextStyle(
-                  fontSize: kFontSizeLargeTitle,
-                  fontWeight: FontWeight.w700,
-                  color: tokens.textPrimary,
-                ),
+              _YearTitleButton(
+                label: '${widget.month.year}年${widget.month.month}月',
+                onTap: () async {
+                  final year = await showDSYearPicker(
+                    context,
+                    initialYear: widget.month.year,
+                  );
+                  if (year != null && mounted) {
+                    // 保持当前月份、直接跨年跳转（沿用跨月动画规则）
+                    _handleDayTap(
+                      DateTime(year, widget.month.month, 1),
+                    );
+                  }
+                },
               ),
               const SizedBox(width: 12),
               _SmallIconButton(
@@ -512,6 +520,61 @@ class _DayCellState extends State<_DayCell> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 年月标题按钮：常态无框；hover 浮现圆角边框轮廓（提示可点击），
+/// 点击弹出年份选择器（跨年跳转，文档 10.1 节）。
+class _YearTitleButton extends StatefulWidget {
+  const _YearTitleButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  State<_YearTitleButton> createState() => _YearTitleButtonState();
+}
+
+class _YearTitleButtonState extends State<_YearTitleButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = DSTokensScope.of(context);
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: kDurationQuick,
+          height: 30,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: _hovered
+                ? tokens.textPrimary.withValues(alpha: 0.05)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: _hovered
+                  ? tokens.textPrimary.withValues(alpha: 0.25)
+                  : Colors.transparent,
+              width: 1,
+            ),
+          ),
+          child: Text(
+            widget.label,
+            style: TextStyle(
+              fontSize: kFontSizeLargeTitle,
+              fontWeight: FontWeight.w700,
+              color: tokens.textPrimary,
+            ),
           ),
         ),
       ),
