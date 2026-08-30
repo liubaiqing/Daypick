@@ -2,6 +2,8 @@
 /// 全窗口图片拖拽上传。对应技术开发文档第 9.1 / 9.2 节。
 library;
 
+import 'dart:ui';
+
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,10 +29,6 @@ class _AppShellState extends ConsumerState<AppShell> {
     // 主题 token 由 CalendarApp 的 MaterialApp.builder 提供（覆盖 Navigator 与全部弹层）
     final tokens = DSTokensScope.of(context);
     final isGlass = tokens.glassBlurSigma > 0;
-    // 毛玻璃主题：主背景为半透明白，叠在不透明基座上（应用内无桌面内容可透，
-    // 玻璃观感由弹层/输入条的 BackdropFilter 呈现，文档 9.4.2）；
-    // 基座用浅灰模拟"桌面"，玻璃渐变叠加出透光层次
-    final baseColor = isGlass ? const Color(0xFFE9E9EE) : tokens.mainBackground;
     return DropTarget(
       // 全窗口拖拽图片：路径写入 provider，由日历页输入条消费（文档 8 章调整）
       onDragDone: (details) {
@@ -42,25 +40,38 @@ class _AppShellState extends ConsumerState<AppShell> {
           ref.read(droppedImagesProvider.notifier).set(paths);
         }
       },
-      child: ColoredBox(
-        color: baseColor,
-        child: isGlass
-            // 玻璃渐变主背景：左上高光 → 右下通透（模拟玻璃透光）
-            ? Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      tokens.mainBackground,
-                      tokens.mainBackground.withValues(alpha: 0.85),
-                    ],
-                    begin: const Alignment(-0.8, -0.8),
-                    end: const Alignment(0.6, 0.7),
+      child: isGlass
+          // 毛玻璃主界面（文档 9.4.2）：装饰背景 → 全屏模糊玻璃层 → 清晰内容层
+          ? Stack(
+              fit: StackFit.expand,
+              children: [
+                // 1) 装饰背景：模拟桌面壁纸的柔和光斑（供模糊层采样）
+                const _GlassBackdrop(),
+                // 2) 全屏毛玻璃：高斯模糊 + 白渐变着色（左上高光 → 右下通透）
+                BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: tokens.glassBlurSigma,
+                    sigmaY: tokens.glassBlurSigma,
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          tokens.mainBackground,
+                          tokens.mainBackground.withValues(alpha: 0.8),
+                        ],
+                        begin: const Alignment(-0.8, -0.8),
+                        end: const Alignment(0.6, 0.7),
+                      ),
+                    ),
+                    child: const SizedBox.expand(),
                   ),
                 ),
-                child: _buildBody(context),
-              )
-            : _buildBody(context),
-      ),
+                // 3) 内容层：标题栏 + 日历（清晰叠在玻璃上）
+                _buildBody(context),
+              ],
+            )
+          : _buildBody(context),
     );
   }
 
@@ -88,6 +99,78 @@ class _AppShellState extends ConsumerState<AppShell> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 毛玻璃主题的装饰背景：浅色基座 + 柔和彩色光斑（模拟桌面壁纸），
+/// 被上层全屏 BackdropFilter 模糊后呈现玻璃透光层次（文档 9.4.2）。
+class _GlassBackdrop extends StatelessWidget {
+  const _GlassBackdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const ColoredBox(color: Color(0xFFE9E9F0)),
+        // 左上蓝
+        Positioned(
+          left: -120,
+          top: -80,
+          child: _Glow(
+            colors: const [Color(0x664DA3FF), Color(0x004DA3FF)],
+            size: 420,
+          ),
+        ),
+        // 右上紫
+        Positioned(
+          right: -100,
+          top: 60,
+          child: _Glow(
+            colors: const [Color(0x55A78BFA), Color(0x00A78BFA)],
+            size: 380,
+          ),
+        ),
+        // 左下粉橙
+        Positioned(
+          left: 40,
+          bottom: -120,
+          child: _Glow(
+            colors: const [Color(0x55FB7185), Color(0x00FB7185)],
+            size: 400,
+          ),
+        ),
+        // 右下青
+        Positioned(
+          right: 20,
+          bottom: 40,
+          child: _Glow(
+            colors: const [Color(0x4434D399), Color(0x0034D399)],
+            size: 320,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 单个柔和光斑（径向渐变圆）
+class _Glow extends StatelessWidget {
+  const _Glow({required this.colors, required this.size});
+
+  final List<Color> colors;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(colors: colors),
       ),
     );
   }

@@ -11,6 +11,7 @@ import 'package:calendar/domain/event_source_type.dart';
 import 'package:calendar/features/settings/settings_page.dart';
 import 'package:calendar/features/shell/app_shell.dart';
 import 'package:calendar/shared/design/ds_button.dart';
+import 'package:calendar/shared/design/ds_glass_surface.dart';
 import 'package:calendar/shared/design/ds_tokens.dart';
 import 'package:calendar/shared/design/dstokens_scope.dart';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
@@ -308,6 +309,23 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(tokensOf().glassBlurSigma, greaterThan(0));
     expect(tokensOf().textPrimary, DSTokens.light.textPrimary);
+
+    // 主界面毛玻璃：全屏 BackdropFilter（装饰背景模糊层）
+    expect(
+      find.descendant(
+        of: find.byType(AppShell),
+        matching: find.byType(BackdropFilter),
+      ),
+      findsWidgets,
+    );
+    // 设置分区卡片毛玻璃：分区内亦存在 DSGlassSurface（嵌套玻璃）
+    expect(
+      find.descendant(
+        of: find.byType(SettingsDialogBody),
+        matching: find.byType(DSGlassSurface),
+      ),
+      findsWidgets,
+    );
 
     // 收尾
     await tester.tap(find.byKey(const ValueKey('settings-close')));

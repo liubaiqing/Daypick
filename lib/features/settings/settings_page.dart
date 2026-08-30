@@ -605,27 +605,29 @@ class _SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = DSTokensScope.of(context);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: tokens.cardBackground,
-        borderRadius: BorderRadius.circular(kRadiusCard),
-        border: Border.all(color: tokens.divider),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: kFontSizeCaption,
-              fontWeight: FontWeight.w700,
-              color: tokens.textSecondary,
+    return DSGlassSurface(
+      borderRadius: BorderRadius.circular(kRadiusCard),
+      // 毛玻璃主题下分区卡片亦呈玻璃质感；浅色/深色保持原卡片视觉
+      fallbackColor: tokens.cardBackground,
+      fallbackShadow: false,
+      border: Border.all(color: tokens.divider),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: kFontSizeCaption,
+                fontWeight: FontWeight.w700,
+                color: tokens.textSecondary,
+              ),
             ),
-          ),
-          const SizedBox(height: 10),
-          child,
-        ],
+            const SizedBox(height: 10),
+            child,
+          ],
+        ),
       ),
     );
   }

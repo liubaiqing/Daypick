@@ -37,6 +37,7 @@ class DSGlassSurface extends StatelessWidget {
     this.border,
     this.fallbackColor,
     this.fallbackShadowColor,
+    this.fallbackShadow = true,
   });
 
   final Widget child;
@@ -56,6 +57,9 @@ class DSGlassSurface extends StatelessWidget {
   /// 非毛玻璃主题下的投影色（默认弹层投影；输入条传卡片投影）
   final Color? fallbackShadowColor;
 
+  /// 非毛玻璃主题是否渲染投影（分区卡片等无投影场景传 false）
+  final bool fallbackShadow;
+
   @override
   Widget build(BuildContext context) {
     final tokens = DSTokensScope.of(context);
@@ -69,13 +73,16 @@ class DSGlassSurface extends StatelessWidget {
         decoration: BoxDecoration(
           color: fallbackColor ?? tokens.dialogBackground,
           borderRadius: radius,
-          boxShadow: [
-            BoxShadow(
-              color: fallbackShadowColor ?? tokens.panelShadowColor,
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
-          ],
+          border: border,
+          boxShadow: fallbackShadow
+              ? [
+                  BoxShadow(
+                    color: fallbackShadowColor ?? tokens.panelShadowColor,
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ]
+              : null,
         ),
         child: child,
       );
