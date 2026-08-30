@@ -50,7 +50,10 @@ void main() {
     expect(DSTokens.glass.textSecondary, const Color(0xFF59697D));
     expect(DSTokens.glass.accentBlue, const Color(0xFF3D7EC5));
     expect(DSTokens.glass.successGreen, const Color(0xFF3C9B70));
-    expect(DSTokens.glass.glassBlurSigma, greaterThan(0));
+    expect(DSTokens.glass.glassSurface, const Color(0x24FFFFFF));
+    expect(DSTokens.glass.dialogBackground, const Color(0x52FFFFFF));
+    expect(DSTokens.glass.glassBlurSigma, 10.5);
+    expect(DSTokens.glass.glassDialogBlurSigma, 14);
     expect(
       DSTokens.glass.glassDialogBlurSigma,
       greaterThan(DSTokens.glass.glassBlurSigma),

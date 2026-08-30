@@ -442,17 +442,23 @@ class _SendActionButtonState extends State<_SendActionButton> {
   Widget build(BuildContext context) {
     final tokens = DSTokensScope.of(context);
     final accent = tokens.accentBlue;
-    final opacity = widget.busy ? 0.5 : 1.0;
+    final isGlass = tokens.glassBlurSigma > 0;
+    final opacity = widget.busy
+        ? (isGlass ? 0.2 : 0.5)
+        : (isGlass ? (_hovered ? 0.42 : 0.34) : 1.0);
     final highlight = Color.lerp(
       accent,
       Colors.white,
-      _hovered ? 0.2 : 0.12,
-    )!.withValues(alpha: opacity);
+      _hovered ? 0.26 : 0.18,
+    )!.withValues(alpha: opacity * 0.68);
     final depth = Color.lerp(
       accent,
       Colors.black,
-      _pressed ? 0.14 : 0.06,
-    )!.withValues(alpha: opacity);
+      _pressed ? 0.12 : 0.04,
+    )!.withValues(alpha: (opacity * 0.96).clamp(0, 1));
+    final iconColor = isGlass
+        ? tokens.textPrimary.withValues(alpha: widget.busy ? 0.45 : 0.88)
+        : Colors.white;
 
     return MouseRegion(
       cursor: widget.busy ? SystemMouseCursors.basic : SystemMouseCursors.click,
@@ -498,17 +504,17 @@ class _SendActionButtonState extends State<_SendActionButton> {
                 ],
               ),
               child: widget.busy
-                  ? const Padding(
+                  ? Padding(
                       padding: EdgeInsets.all(8),
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation(Colors.white),
+                        valueColor: AlwaysStoppedAnimation(iconColor),
                       ),
                     )
-                  : const Icon(
+                  : Icon(
                       Icons.arrow_upward,
                       size: 16,
-                      color: Colors.white,
+                      color: iconColor,
                     ),
             ),
           ),

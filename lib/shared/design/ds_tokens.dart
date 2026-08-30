@@ -153,9 +153,9 @@ class DSTokens {
   static const DSTokens glass = DSTokens(
     sidebarBackground: Color(0x8CFFFFFF),
     mainBackground: Color(0xFFEDF3FA),
-    // 内容卡片为 32% 标准材质；Liquid Glass 本体使用更透明的独立填充。
-    cardBackground: Color(0x52FFFFFF),
-    dialogBackground: Color(0x8FFFFFFF),
+    // 内容卡片保持可读；Liquid Glass 本体降低白度以透出模糊背景色。
+    cardBackground: Color(0x42FFFFFF),
+    dialogBackground: Color(0x52FFFFFF),
     textPrimary: Color(0xFF17202B),
     textSecondary: Color(0xFF59697D),
     divider: Color(0x667A8EA6),
@@ -168,12 +168,12 @@ class DSTokens {
     windowButtonMinimize: Color(0xFFFEBC2E),
     windowButtonMaximize: Color(0xFF28C840),
     // clear glass 以透明和边缘透镜为主；regular glass 稍厚但仍可见背景。
-    glassSurface: Color(0x3DFFFFFF),
+    glassSurface: Color(0x24FFFFFF),
     glassBorder: Color(0x8FFFFFFF),
-    glassBlurSigma: 7.5,
+    glassBlurSigma: 10.5,
     glassDialogBlurSigma: 14,
-    glassTintStart: Color(0x3DFFFFFF),
-    glassTintEnd: Color(0x08FFFFFF),
+    glassTintStart: Color(0x1AFFFFFF),
+    glassTintEnd: Color(0x05FFFFFF),
     modalBarrier: Color(0x1F16202B),
     panelShadowColor: Color(0x36182736),
     cardShadowColor: Color(0x2B182736),

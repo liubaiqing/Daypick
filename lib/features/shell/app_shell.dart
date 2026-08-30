@@ -65,7 +65,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     final tokens = DSTokensScope.of(context);
     return ColoredBox(
       // Liquid Glass 需要可折射的环境色；仅覆盖轻白蒙层保证日历可读。
-      color: isGlass ? const Color(0x26FFFFFF) : tokens.mainBackground,
+      color: isGlass ? const Color(0x18FFFFFF) : tokens.mainBackground,
       child: Column(
         children: [
           const _TitleBar(),
@@ -111,7 +111,7 @@ class _GlassAmbientBackground extends StatelessWidget {
               gradient: RadialGradient(
                 center: Alignment(-0.85, -0.95),
                 radius: 0.95,
-                colors: [Color(0xD9BFDDF9), Color(0x00BFDDF9)],
+                colors: [Color(0xB8A9D5F7), Color(0x00A9D5F7)],
                 stops: [0, 1],
               ),
             ),
@@ -121,7 +121,7 @@ class _GlassAmbientBackground extends StatelessWidget {
               gradient: RadialGradient(
                 center: Alignment(0.95, -0.55),
                 radius: 0.85,
-                colors: [Color(0x8FD9D1F2), Color(0x00D9D1F2)],
+                colors: [Color(0x8FCABFEE), Color(0x00CABFEE)],
                 stops: [0, 1],
               ),
             ),
@@ -131,7 +131,7 @@ class _GlassAmbientBackground extends StatelessWidget {
               gradient: RadialGradient(
                 center: Alignment(0.45, 1.05),
                 radius: 0.9,
-                colors: [Color(0xA8C8ECE8), Color(0x00C8ECE8)],
+                colors: [Color(0x99B4E9DF), Color(0x00B4E9DF)],
                 stops: [0, 1],
               ),
             ),
