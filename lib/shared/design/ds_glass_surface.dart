@@ -276,58 +276,79 @@ class _LiquidGlassPainter extends CustomPainter {
       ).createShader(rect);
     canvas.drawRect(rect, ambientGlaze);
 
-    // 宽透镜带以连续透明度表现凸起弧面；轻微模糊把内外边界融入表面。
-    final softBandPaint = Paint()
-      ..blendMode = BlendMode.screen
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, isDialog ? 3.2 : 2.1)
-      ..shader = const LinearGradient(
-        begin: Alignment(-0.85, -1),
-        end: Alignment(0.8, 1),
-        colors: [
-          Color(0x70FFFFFF),
-          Color(0x2EFFFFFF),
-          Color(0x0FFFFFFF),
-          Color(0x3AFFF8E8),
-        ],
-        stops: [0, 0.32, 0.68, 1],
-      ).createShader(rect);
-    canvas.drawPath(edgeBand, softBandPaint);
+    if (isDialog) {
+      // 强玻璃只允许一个清晰轮廓。宽反射使用模糊描边向内自然衰减，
+      // 不再绘制独立 innerRRect，避免视觉上形成“玻璃套玻璃”。
+      final featheredRimPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 8
+        ..blendMode = BlendMode.screen
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.2)
+        ..shader = const LinearGradient(
+          begin: Alignment(-0.85, -1),
+          end: Alignment(0.8, 1),
+          colors: [
+            Color(0x58FFFFFF),
+            Color(0x20EAF7FF),
+            Color(0x08FFFFFF),
+            Color(0x2CFFF8E8),
+          ],
+          stops: [0, 0.34, 0.7, 1],
+        ).createShader(rect);
+      canvas.drawRRect(outerRRect.deflate(4), featheredRimPaint);
+    } else {
+      // 轻玻璃控件保留较集中的弧面与内缘焦散，以强化小尺寸反馈。
+      final softBandPaint = Paint()
+        ..blendMode = BlendMode.screen
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.1)
+        ..shader = const LinearGradient(
+          begin: Alignment(-0.85, -1),
+          end: Alignment(0.8, 1),
+          colors: [
+            Color(0x70FFFFFF),
+            Color(0x2EFFFFFF),
+            Color(0x0FFFFFFF),
+            Color(0x3AFFF8E8),
+          ],
+          stops: [0, 0.32, 0.68, 1],
+        ).createShader(rect);
+      canvas.drawPath(edgeBand, softBandPaint);
 
-    final lensBandPaint = Paint()
-      ..shader = const SweepGradient(
-        center: Alignment.center,
-        startAngle: -0.7,
-        endAngle: 5.58,
-        colors: [
-          Color(0x55FFFFFF),
-          Color(0x24EAF7FF),
-          Color(0x0AFFFFFF),
-          Color(0x1217202B),
-          Color(0x22FFF7E5),
-          Color(0x4DFFFFFF),
-          Color(0x55FFFFFF),
-        ],
-        stops: [0, 0.18, 0.38, 0.58, 0.76, 0.9, 1],
-      ).createShader(rect);
-    canvas.drawPath(edgeBand, lensBandPaint);
+      final lensBandPaint = Paint()
+        ..shader = const SweepGradient(
+          center: Alignment.center,
+          startAngle: -0.7,
+          endAngle: 5.58,
+          colors: [
+            Color(0x55FFFFFF),
+            Color(0x24EAF7FF),
+            Color(0x0AFFFFFF),
+            Color(0x1217202B),
+            Color(0x22FFF7E5),
+            Color(0x4DFFFFFF),
+            Color(0x55FFFFFF),
+          ],
+          stops: [0, 0.18, 0.38, 0.58, 0.76, 0.9, 1],
+        ).createShader(rect);
+      canvas.drawPath(edgeBand, lensBandPaint);
 
-    // 柔和的内缘焦散把宽边缘平滑收束到中央清晰区。
-    final innerCausticPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = isDialog ? 1.5 : 1.1
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, isDialog ? 1.8 : 1.1)
-      ..shader = const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Color(0x52FFFFFF),
-          Color(0x0AFFFFFF),
-          Color(0x1817202B),
-          Color(0x3DFFFFFF),
-        ],
-        stops: [0, 0.42, 0.72, 1],
-      ).createShader(rect);
-    canvas.drawRRect(innerRRect, innerCausticPaint);
+      final innerCausticPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.1
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.1)
+        ..shader = const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0x52FFFFFF),
+            Color(0x0AFFFFFF),
+            Color(0x1817202B),
+            Color(0x3DFFFFFF),
+          ],
+          stops: [0, 0.42, 0.72, 1],
+        ).createShader(rect);
+      canvas.drawRRect(innerRRect, innerCausticPaint);
+    }
 
     final point = pointer;
     if (hovered && point != null) {
