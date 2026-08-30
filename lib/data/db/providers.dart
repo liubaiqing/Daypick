@@ -30,16 +30,6 @@ final dayEventsProvider =
   return ref.watch(eventDaoProvider).watchDay(day);
 });
 
-/// 回收站事件流（回收站窗口数据源，按删除时间倒序）
-final trashEventsProvider = StreamProvider<List<Event>>((ref) {
-  return ref.watch(eventDaoProvider).watchTrash();
-});
-
-/// 回收站事件数量（设置入口徽标；一次性查询，窗口关闭后 invalidate 刷新）
-final trashCountProvider = FutureProvider<int>((ref) {
-  return ref.watch(eventDaoProvider).getTrashCount();
-});
-
 final settingsDaoProvider = Provider<SettingsDao>(
   (ref) => SettingsDao(ref.watch(databaseProvider)),
 );

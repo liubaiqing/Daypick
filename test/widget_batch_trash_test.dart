@@ -195,17 +195,6 @@ void main() {
     await pumpApp(tester);
     await openSettings(tester);
 
-    // 回收站入口显示徽标 1（先滚动到数据管理区）
-    await scrollSettingsTo(tester, find.byKey(const ValueKey('trash-badge')));
-    expect(find.byKey(const ValueKey('trash-badge')), findsOneWidget);
-    expect(
-      find.descendant(
-        of: find.byKey(const ValueKey('trash-badge')),
-        matching: find.text('1'),
-      ),
-      findsOneWidget,
-    );
-
     // 打开回收站
     await openTrash(tester);
     expect(find.text('删除我'), findsOneWidget);
