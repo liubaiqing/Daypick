@@ -401,39 +401,10 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
                       ),
                       const SizedBox(width: 8),
                       // 发送按钮
-                      GestureDetector(
-                        onTap: _busy ? null : _send,
-                        child: DSGlassSurface(
-                          kind: DSGlassSurfaceKind.floating,
-                          borderRadius: BorderRadius.circular(16),
-                          singleLayerEdge: true,
-                          tint: tokens.accentBlue.withValues(
-                            alpha: _busy ? 0.38 : 0.72,
-                          ),
-                          fallbackColor: _busy
-                              ? tokens.accentBlue.withValues(alpha: 0.5)
-                              : tokens.accentBlue,
-                          fallbackShadow: false,
-                          child: SizedBox(
-                            width: 32,
-                            height: 32,
-                            child: _busy
-                                ? const Padding(
-                                    padding: EdgeInsets.all(8),
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation(
-                                        Colors.white,
-                                      ),
-                                    ),
-                                  )
-                                : const Icon(
-                                    Icons.arrow_upward,
-                                    size: 16,
-                                    color: Colors.white,
-                                  ),
-                          ),
-                        ),
+                      _SendActionButton(
+                        key: const ValueKey('composer-send'),
+                        busy: _busy,
+                        onTap: _send,
                       ),
                     ],
                   ),
@@ -442,6 +413,106 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 单层主操作圆盘：高光完全裁剪在蓝色圆面内部，不叠加玻璃外环。
+class _SendActionButton extends StatefulWidget {
+  const _SendActionButton({super.key, required this.busy, required this.onTap});
+
+  final bool busy;
+  final VoidCallback onTap;
+
+  @override
+  State<_SendActionButton> createState() => _SendActionButtonState();
+}
+
+class _SendActionButtonState extends State<_SendActionButton> {
+  bool _hovered = false;
+  bool _pressed = false;
+
+  void _setPressed(bool value) {
+    if (_pressed == value) return;
+    setState(() => _pressed = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = DSTokensScope.of(context);
+    final accent = tokens.accentBlue;
+    final opacity = widget.busy ? 0.5 : 1.0;
+    final highlight = Color.lerp(
+      accent,
+      Colors.white,
+      _hovered ? 0.2 : 0.12,
+    )!.withValues(alpha: opacity);
+    final depth = Color.lerp(
+      accent,
+      Colors.black,
+      _pressed ? 0.14 : 0.06,
+    )!.withValues(alpha: opacity);
+
+    return MouseRegion(
+      cursor: widget.busy ? SystemMouseCursors.basic : SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() {
+        _hovered = false;
+        _pressed = false;
+      }),
+      child: Listener(
+        onPointerDown: widget.busy ? null : (_) => _setPressed(true),
+        onPointerUp: widget.busy ? null : (_) => _setPressed(false),
+        onPointerCancel: widget.busy ? null : (_) => _setPressed(false),
+        child: GestureDetector(
+          onTap: widget.busy ? null : widget.onTap,
+          child: AnimatedScale(
+            scale: _pressed ? 0.94 : 1,
+            duration: const Duration(milliseconds: 110),
+            curve: Curves.easeOutCubic,
+            child: AnimatedContainer(
+              duration: kDurationQuick,
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  center: const Alignment(-0.35, -0.42),
+                  radius: 1.15,
+                  colors: [
+                    highlight,
+                    accent.withValues(alpha: opacity),
+                    depth,
+                  ],
+                  stops: const [0, 0.58, 1],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF182736)
+                        .withValues(alpha: widget.busy ? 0.06 : 0.14),
+                    offset: const Offset(0, 3),
+                    blurRadius: 8,
+                    spreadRadius: -2,
+                  ),
+                ],
+              ),
+              child: widget.busy
+                  ? const Padding(
+                      padding: EdgeInsets.all(8),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation(Colors.white),
+                      ),
+                    )
+                  : const Icon(
+                      Icons.arrow_upward,
+                      size: 16,
+                      color: Colors.white,
+                    ),
+            ),
+          ),
+        ),
       ),
     );
   }

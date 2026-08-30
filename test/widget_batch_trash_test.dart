@@ -323,11 +323,10 @@ void main() {
     final kinds = glassSurfaces.map((surface) => surface.kind);
     expect(kinds, contains(DSGlassSurfaceKind.floating));
     expect(kinds, contains(DSGlassSurfaceKind.dialog));
+    expect(find.byKey(const ValueKey('composer-send')), findsOneWidget);
     expect(
-      glassSurfaces.where(
-        (surface) => surface.singleLayerEdge && surface.tint != null,
-      ),
-      hasLength(1),
+      tester.widget(find.byKey(const ValueKey('composer-send'))),
+      isNot(isA<DSGlassSurface>()),
     );
     expect(
       find.descendant(
