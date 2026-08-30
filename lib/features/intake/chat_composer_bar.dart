@@ -306,6 +306,7 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
               ),
             ),
           DSGlassSurface(
+            kind: DSGlassSurfaceKind.floating,
             borderRadius: BorderRadius.circular(kRadiusComposer),
             // 非毛玻璃主题下保持输入条原有卡片视觉
             fallbackColor: tokens.cardBackground,
@@ -315,127 +316,128 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                // 图片附件缩略图（输入框内，可删除）
-                if (_attachmentPaths.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (var i = 0; i < _attachmentPaths.length; i++)
-                          _AttachmentThumb(
-                            key: ValueKey('attachment-$i'),
-                            path: _attachmentPaths[i],
-                            onRemove: _busy ? null : () => _removeAttachment(i),
-                          ),
-                      ],
-                    ),
-                  ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    // 上传按钮
-                    _ComposerIconButton(
-                      icon: Icons.image_outlined,
-                      tooltip: '从文件夹上传图片',
-                      onTap: _busy ? null : _pickImages,
-                    ),
-                    const SizedBox(width: 8),
-                    // 文本输入（Ctrl+V 经 PasteTextIntent 拦截：图片→附件，文本→手动粘贴；
-                    // 回车发送、Shift+Enter 换行）
-                    Expanded(
-                      child: Actions(
-                        actions: {
-                          PasteTextIntent: CallbackAction<PasteTextIntent>(
-                            onInvoke: (intent) {
-                              _handlePaste();
-                              return null;
-                            },
-                          ),
-                        },
-                        child: Focus(
-                          onKeyEvent: _handleKey,
-                          child: TextField(
-                            controller: _textCtrl,
-                            focusNode: _focusNode,
-                            enabled: !_busy,
-                            minLines: 1,
-                            maxLines: 4,
-                            keyboardType: TextInputType.multiline,
-                            style: TextStyle(
-                              fontSize: kFontSizeBody,
-                              color: tokens.textPrimary,
+                  // 图片附件缩略图（输入框内，可删除）
+                  if (_attachmentPaths.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (var i = 0; i < _attachmentPaths.length; i++)
+                            _AttachmentThumb(
+                              key: ValueKey('attachment-$i'),
+                              path: _attachmentPaths[i],
+                              onRemove:
+                                  _busy ? null : () => _removeAttachment(i),
                             ),
-                            decoration: InputDecoration(
-                              hintText: '输入包含时间、地点、事务的内容，或上传图片…',
-                              hintStyle: TextStyle(
-                                fontSize: kFontSizeBody,
-                                color: tokens.textSecondary.withValues(
-                                  alpha: 0.6,
-                                ),
-                              ),
-                              border: InputBorder.none,
-                              isCollapsed: true,
-                              contentPadding: const EdgeInsets.symmetric(
-                                vertical: 8,
-                              ),
-                            ),
-                          ),
-                        ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    // 解析模式小分段控件（滑块平滑滑动，受动画开关控制）
-                    DSSegmentedControl(
-                      options: const [
-                        (label: '本地', enabled: true, tooltip: null),
-                        (label: 'AI', enabled: true, tooltip: null),
-                      ],
-                      selectedIndex: _mode == kParseModeAi ? 1 : 0,
-                      duration: animOn ? kDurationNormal : Duration.zero,
-                      onChanged: (i) =>
-                          _setMode(i == 0 ? kParseModeLocal : kParseModeAi),
-                    ),
-                    const SizedBox(width: 8),
-                    // 发送按钮
-                    GestureDetector(
-                      onTap: _busy ? null : _send,
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: _busy
-                              ? tokens.accentBlue.withValues(alpha: 0.5)
-                              : tokens.accentBlue,
-                        ),
-                        child: _busy
-                            ? const Padding(
-                                padding: EdgeInsets.all(8),
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation(
-                                    Colors.white,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      // 上传按钮
+                      _ComposerIconButton(
+                        icon: Icons.image_outlined,
+                        tooltip: '从文件夹上传图片',
+                        onTap: _busy ? null : _pickImages,
+                      ),
+                      const SizedBox(width: 8),
+                      // 文本输入（Ctrl+V 经 PasteTextIntent 拦截：图片→附件，文本→手动粘贴；
+                      // 回车发送、Shift+Enter 换行）
+                      Expanded(
+                        child: Actions(
+                          actions: {
+                            PasteTextIntent: CallbackAction<PasteTextIntent>(
+                              onInvoke: (intent) {
+                                _handlePaste();
+                                return null;
+                              },
+                            ),
+                          },
+                          child: Focus(
+                            onKeyEvent: _handleKey,
+                            child: TextField(
+                              controller: _textCtrl,
+                              focusNode: _focusNode,
+                              enabled: !_busy,
+                              minLines: 1,
+                              maxLines: 4,
+                              keyboardType: TextInputType.multiline,
+                              style: TextStyle(
+                                fontSize: kFontSizeBody,
+                                color: tokens.textPrimary,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: '输入包含时间、地点、事务的内容，或上传图片…',
+                                hintStyle: TextStyle(
+                                  fontSize: kFontSizeBody,
+                                  color: tokens.textSecondary.withValues(
+                                    alpha: 0.6,
                                   ),
                                 ),
-                              )
-                            : const Icon(
-                                Icons.arrow_upward,
-                                size: 16,
-                                color: Colors.white,
+                                border: InputBorder.none,
+                                isCollapsed: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
                               ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: 8),
+                      // 解析模式小分段控件（滑块平滑滑动，受动画开关控制）
+                      DSSegmentedControl(
+                        options: const [
+                          (label: '本地', enabled: true, tooltip: null),
+                          (label: 'AI', enabled: true, tooltip: null),
+                        ],
+                        selectedIndex: _mode == kParseModeAi ? 1 : 0,
+                        duration: animOn ? kDurationNormal : Duration.zero,
+                        onChanged: (i) =>
+                            _setMode(i == 0 ? kParseModeLocal : kParseModeAi),
+                      ),
+                      const SizedBox(width: 8),
+                      // 发送按钮
+                      GestureDetector(
+                        onTap: _busy ? null : _send,
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _busy
+                                ? tokens.accentBlue.withValues(alpha: 0.5)
+                                : tokens.accentBlue,
+                          ),
+                          child: _busy
+                              ? const Padding(
+                                  padding: EdgeInsets.all(8),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.arrow_upward,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
   }
 }
 

@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'ds_glass_surface.dart';
 import 'ds_tokens.dart';
 import 'dstokens_scope.dart';
 
@@ -62,8 +63,7 @@ class _DSDropdownState<T> extends State<DSDropdown<T>> {
       _close();
       return;
     }
-    final box =
-        _anchorKey.currentContext!.findRenderObject() as RenderBox;
+    final box = _anchorKey.currentContext!.findRenderObject() as RenderBox;
     final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final position = box.localToGlobal(Offset.zero, ancestor: overlay);
     // OverlayEntry 的 context 位于 DSTokensScope 之上，提前捕获 token
@@ -102,38 +102,61 @@ class _DSDropdownState<T> extends State<DSDropdown<T>> {
           left: position.dx,
           top: position.dy + 40,
           width: width,
-          child: Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: tokens.dialogBackground,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: tokens.divider),
-              boxShadow: [
-                BoxShadow(
-                  color: tokens.panelShadowColor,
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final item in items)
-                  _MenuItem<T>(
-                    tokens: tokens,
-                    item: item,
-                    selected: item.value == value,
-                    onTap: () {
-                      widget.onChanged(item.value);
-                      _close();
-                    },
-                  ),
-              ],
-            ),
-          ),
+          child: _buildMenuSurface(tokens, items, value),
         ),
       ],
+    );
+  }
+
+  Widget _buildMenuSurface(
+    DSTokens tokens,
+    List<DSDropdownItem<T>> items,
+    T? value,
+  ) {
+    final content = Padding(
+      padding: const EdgeInsets.all(4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final item in items)
+            _MenuItem<T>(
+              tokens: tokens,
+              item: item,
+              selected: item.value == value,
+              onTap: () {
+                widget.onChanged(item.value);
+                _close();
+              },
+            ),
+        ],
+      ),
+    );
+    final radius = BorderRadius.circular(10);
+    if (tokens.glassBlurSigma > 0) {
+      // OverlayEntry 位于应用 DSTokensScope 之上，显式补回当前主题 token。
+      return DSTokensScope(
+        tokens: tokens,
+        child: DSGlassSurface(
+          kind: DSGlassSurfaceKind.floating,
+          borderRadius: radius,
+          child: content,
+        ),
+      );
+    }
+    return Container(
+      decoration: BoxDecoration(
+        color: tokens.dialogBackground,
+        borderRadius: radius,
+        border: Border.all(color: tokens.divider),
+        boxShadow: [
+          BoxShadow(
+            color: tokens.panelShadowColor,
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: content,
     );
   }
 

@@ -19,25 +19,28 @@ Future<void> showParseResultPanel(
   BuildContext context,
   List<ParsedEvent> events,
 ) {
+  final tokens = DSTokensScope.of(context);
   // 动画开关：关闭时过渡瞬间完成
-  final animOn = ProviderScope.containerOf(context, listen: false)
-          .read(animationsEnabledProvider)
-          .value ??
+  final animOn = ProviderScope.containerOf(
+        context,
+        listen: false,
+      ).read(animationsEnabledProvider).value ??
       true;
   final transition = animOn ? kDurationQuick : Duration.zero;
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: false,
     barrierLabel: 'parse-result-panel',
-    barrierColor: Colors.black.withValues(alpha: 0.32),
+    barrierColor: tokens.modalBarrier,
     transitionDuration: transition,
     pageBuilder: (context, _, _) => _ParseResultPanel(events: events),
     transitionBuilder: (context, animation, _, child) => FadeTransition(
       opacity: animation,
       child: ScaleTransition(
-        scale: Tween<double>(begin: 0.97, end: 1.0).animate(
-          CurvedAnimation(parent: animation, curve: Curves.easeOut),
-        ),
+        scale: Tween<double>(
+          begin: 0.97,
+          end: 1.0,
+        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
         child: child,
       ),
     ),
@@ -50,8 +53,7 @@ class _ParseResultPanel extends ConsumerStatefulWidget {
   final List<ParsedEvent> events;
 
   @override
-  ConsumerState<_ParseResultPanel> createState() =>
-      _ParseResultPanelState();
+  ConsumerState<_ParseResultPanel> createState() => _ParseResultPanelState();
 }
 
 class _ParseResultPanelState extends ConsumerState<_ParseResultPanel> {
@@ -71,9 +73,8 @@ class _ParseResultPanelState extends ConsumerState<_ParseResultPanel> {
     if (!mounted) return;
     setState(() {});
     if (savedCount > 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已保存 $savedCount 条事件到日历')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('已保存 $savedCount 条事件到日历')));
     }
   }
 
@@ -113,6 +114,7 @@ class _ParseResultPanelState extends ConsumerState<_ParseResultPanel> {
     final unsaved = _unsavedCount;
     return Center(
       child: DSGlassSurface(
+        kind: DSGlassSurfaceKind.dialog,
         width: 680,
         constraints: BoxConstraints(
           maxHeight: MediaQuery.sizeOf(context).height * 0.8,
@@ -172,8 +174,7 @@ class _ParseResultPanelState extends ConsumerState<_ParseResultPanel> {
                     onPressed: _requestClose,
                   ),
                   const SizedBox(width: 8),
-                  if (unsaved > 0)
-                    DSButton(label: '全部保存', onPressed: _saveAll),
+                  if (unsaved > 0) DSButton(label: '全部保存', onPressed: _saveAll),
                 ],
               ),
             ),
@@ -214,11 +215,7 @@ class _PanelCloseButtonState extends State<_PanelCloseButton> {
                 ? tokens.textPrimary.withValues(alpha: 0.06)
                 : Colors.transparent,
           ),
-          child: Icon(
-            Icons.close,
-            size: 15,
-            color: tokens.textSecondary,
-          ),
+          child: Icon(Icons.close, size: 15, color: tokens.textSecondary),
         ),
       ),
     );

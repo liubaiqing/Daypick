@@ -1,13 +1,8 @@
-/// 毛玻璃容器（文档 9.6 节 DSGlassSurface / 9.4.2 节 HIG Materials）：
-/// `BackdropFilter`（blur 20 + 饱和度补偿 1.8）+ **半透明白渐变着色**（左上高光
-/// 白 0.4 → 右下透明，模拟玻璃反光）+ **渐变边缘描边**（白 0.5 → 白 0.12，
-/// 模拟玻璃边缘反射）+ hairline 底描边；圆角裁剪保证模糊只作用于卡片区域。
+/// 冷静通透的毛玻璃容器（文档 9.6 节 DSGlassSurface）：
+/// 轻玻璃用于输入条/下拉浮层，强玻璃用于居中弹窗；两者均由明确的半透明
+/// 基础填充、轻微定向高光、单一亮边和冷灰投影组成。
 /// 仅毛玻璃主题（`DSTokens.glass`）启用，浅色/深色主题下退化为普通 Container。
-///
-/// 实现参考：devgex.com/zh-CN/article/00042834（ClipRect 裁剪与模糊分层）、
-/// juejin.cn/post/7425527459683860491（渐变着色/渐变边框/阴影 spreadRadius=-1）。
-///
-/// 使用范围（文档 9.5 节）：仅窗口主背景、卡片/输入条、弹层三处；
+/// 使用范围：只用于输入条、下拉菜单和顶层弹窗；
 /// 禁止在月视图网格、列表行等高频重绘区域使用（性能）。
 library;
 
@@ -17,6 +12,8 @@ import 'package:flutter/material.dart';
 
 import 'ds_tokens.dart';
 import 'dstokens_scope.dart';
+
+enum DSGlassSurfaceKind { floating, dialog }
 
 class DSGlassSurface extends StatelessWidget {
   const DSGlassSurface({
@@ -29,7 +26,7 @@ class DSGlassSurface extends StatelessWidget {
     this.fallbackColor,
     this.fallbackShadowColor,
     this.fallbackShadow = true,
-    this.blur = true,
+    this.kind = DSGlassSurfaceKind.dialog,
   });
 
   final Widget child;
@@ -43,10 +40,8 @@ class DSGlassSurface extends StatelessWidget {
   final BorderRadius? borderRadius;
   final Border? border;
 
-  /// 是否做背景模糊。嵌套场景（弹窗内的分区卡片）传 false：
-  /// 弹窗已提供模糊，卡片只需渐变着色 + 边缘描边即可呈现玻璃层次，
-  /// 避免嵌套 BackdropFilter 的采样异常与性能开销。
-  final bool blur;
+  /// 轻玻璃用于输入条/下拉菜单，强玻璃用于模态弹窗。
+  final DSGlassSurfaceKind kind;
 
   /// 非毛玻璃主题下的背景色（默认弹层级；输入条等卡片场景传 cardBackground）
   final Color? fallbackColor;
@@ -84,55 +79,48 @@ class DSGlassSurface extends StatelessWidget {
         child: child,
       );
     } else {
-      // 毛玻璃（教程参数）：
-      // 1) ClipRRect 裁剪模糊只作用于圆角卡片区域（devgex 要点）
-      // 2) BackdropFilter 高斯模糊背景（blur=false 时跳过，仅着色）
-      // 3) 渐变着色模拟玻璃反光 + 阴影 spreadRadius=-1（juejin 要点）
-      // 4) 渐变边缘描边模拟玻璃边缘反射（juejin 点睛之笔）
-      // 注意：不做 ColorFiltered 饱和度补偿——它会作用于容器内所有
-      // 前景内容（按钮/开关/文字），把强调色重新拉饱和（刺眼根因）。
-      Widget tinted = CustomPaint(
-        painter: _GlassEdgePainter(
-          radius: radius,
-          start: tokens.glassEdgeStart,
-          end: tokens.glassEdgeEnd,
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: radius,
-            // 玻璃反光渐变：左上高光 → 右下淡白（两端均保持白底）
-            gradient: LinearGradient(
-              colors: [tokens.glassTintStart, tokens.glassTintEnd],
-              begin: const Alignment(-1, -1),
-              end: const Alignment(0.4, 0.6),
-            ),
-            border: border ??
-                Border.all(color: tokens.glassBorder, width: 1),
-            boxShadow: [
-              BoxShadow(
-                color: tokens.panelShadowColor,
-                offset: const Offset(0, 1),
-                blurRadius: 24,
-                // 玻璃阴影：外扩为负，贴合边缘（juejin 要点）
-                spreadRadius: -1,
-              ),
+      final isDialog = kind == DSGlassSurfaceKind.dialog;
+      final baseColor =
+          isDialog ? tokens.dialogBackground : tokens.glassSurface;
+      final blurSigma =
+          isDialog ? tokens.glassDialogBlurSigma : tokens.glassBlurSigma;
+      final shadowColor =
+          isDialog ? tokens.panelShadowColor : tokens.cardShadowColor;
+      final tinted = Container(
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          gradient: LinearGradient(
+            colors: [
+              Color.alphaBlend(tokens.glassTintStart, baseColor),
+              Color.alphaBlend(tokens.glassTintEnd, baseColor),
             ],
+            begin: const Alignment(-1, -1),
+            end: const Alignment(0.6, 0.7),
           ),
-          child: child,
+          border: border ?? Border.all(color: tokens.glassBorder, width: 1),
+        ),
+        child: child,
+      );
+      surface = DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          boxShadow: [
+            BoxShadow(
+              color: shadowColor,
+              offset: Offset(0, isDialog ? 18 : 8),
+              blurRadius: isDialog ? 50 : 28,
+              spreadRadius: isDialog ? -8 : -4,
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: radius,
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+            child: tinted,
+          ),
         ),
       );
-      surface = blur
-          ? ClipRRect(
-              borderRadius: radius,
-              child: BackdropFilter(
-                filter: ImageFilter.blur(
-                  sigmaX: tokens.glassBlurSigma,
-                  sigmaY: tokens.glassBlurSigma,
-                ),
-                child: tinted,
-              ),
-            )
-          : tinted;
     }
 
     if (constraints != null && width != null) {
@@ -149,45 +137,4 @@ class DSGlassSurface extends StatelessWidget {
     }
     return surface;
   }
-}
-
-/// 玻璃边缘渐变描边：沿圆角矩形描边，左上高光 → 右下渐隐（模拟定向光反射）
-class _GlassEdgePainter extends CustomPainter {
-  const _GlassEdgePainter({
-    required this.radius,
-    required this.start,
-    required this.end,
-  });
-
-  final BorderRadius radius;
-  final Color start;
-  final Color end;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (start == end) return;
-    final rect = Offset.zero & size;
-    final rrect = RRect.fromRectAndCorners(
-      rect,
-      topLeft: radius.topLeft,
-      topRight: radius.topRight,
-      bottomLeft: radius.bottomLeft,
-      bottomRight: radius.bottomRight,
-    );
-    final paint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.centerLeft,
-        end: Alignment.centerRight,
-        colors: [start, end],
-      ).createShader(rect)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    canvas.drawRRect(rrect, paint);
-  }
-
-  @override
-  bool shouldRepaint(_GlassEdgePainter oldDelegate) =>
-      oldDelegate.radius != radius ||
-      oldDelegate.start != start ||
-      oldDelegate.end != end;
 }

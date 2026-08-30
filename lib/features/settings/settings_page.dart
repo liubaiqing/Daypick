@@ -27,20 +27,23 @@ import '../calendar/trash_dialog.dart';
 
 /// 弹出设置小窗（左下角圆形按钮触发）
 Future<void> showSettingsDialog(BuildContext context) {
-  final animOn = ProviderScope.containerOf(context, listen: false)
-          .read(animationsEnabledProvider)
-          .value ??
+  final tokens = DSTokensScope.of(context);
+  final animOn = ProviderScope.containerOf(
+        context,
+        listen: false,
+      ).read(animationsEnabledProvider).value ??
       true;
   final transition = animOn ? kDurationQuick : Duration.zero;
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'settings',
-    barrierColor: Colors.black.withValues(alpha: 0.32),
+    barrierColor: tokens.modalBarrier,
     transitionDuration: transition,
     pageBuilder: (context, _, _) {
       return Center(
         child: DSGlassSurface(
+          kind: DSGlassSurfaceKind.dialog,
           width: 560,
           constraints: BoxConstraints(
             maxHeight: MediaQuery.sizeOf(context).height * 0.82,
@@ -78,9 +81,10 @@ Future<void> showSettingsDialog(BuildContext context) {
     transitionBuilder: (context, animation, _, child) => FadeTransition(
       opacity: animation,
       child: ScaleTransition(
-        scale: Tween<double>(begin: 0.97, end: 1.0).animate(
-          CurvedAnimation(parent: animation, curve: Curves.easeOut),
-        ),
+        scale: Tween<double>(
+          begin: 0.97,
+          end: 1.0,
+        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
         child: child,
       ),
     ),
@@ -128,8 +132,7 @@ class SettingsDialogBody extends ConsumerStatefulWidget {
   const SettingsDialogBody({super.key});
 
   @override
-  ConsumerState<SettingsDialogBody> createState() =>
-      _SettingsDialogBodyState();
+  ConsumerState<SettingsDialogBody> createState() => _SettingsDialogBodyState();
 }
 
 class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
@@ -183,10 +186,9 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
 
   Future<void> _toggleAnimations(bool enabled) async {
     setState(() => _animationsEnabled = enabled);
-    await ref.read(settingsDaoProvider).set(
-      kSettingAnimationsEnabled,
-      enabled ? '1' : '0',
-    );
+    await ref
+        .read(settingsDaoProvider)
+        .set(kSettingAnimationsEnabled, enabled ? '1' : '0');
     ref.invalidate(animationsEnabledProvider);
   }
 
@@ -202,9 +204,8 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
     await dao.set(kSettingLlmApiKey, _apiKeyCtrl.text.trim());
     await dao.set(kSettingLlmModel, _modelCtrl.text.trim());
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('设置已保存')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('设置已保存')));
   }
 
   Future<void> _testConnection() async {
@@ -249,9 +250,9 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
     final content = const IcsExporter().build(events);
     await File(path).writeAsString(content);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('已导出 ${events.length} 条事件：$path')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('已导出 ${events.length} 条事件：$path')));
   }
 
   Future<void> _exportBackup() async {
@@ -262,12 +263,12 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
       allowedExtensions: ['json'],
     );
     if (path == null) return;
-    final content = await BackupService(ref.read(eventDaoProvider)).exportJson();
+    final content =
+        await BackupService(ref.read(eventDaoProvider)).exportJson();
     await File(path).writeAsString(content);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('JSON 备份已导出（不含 API Key）')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('JSON 备份已导出（不含 API Key）')));
   }
 
   Future<void> _restoreBackup() async {
@@ -292,14 +293,12 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
       );
     } on FormatException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('恢复失败：${e.message}')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('恢复失败：${e.message}')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('恢复失败：$e')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('恢复失败：$e')));
     } finally {
       if (mounted) setState(() => _dataBusy = false);
     }
@@ -355,8 +354,7 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
               DSSwitch(
                 value: _animationsEnabled,
                 onChanged: _toggleAnimations,
-                // 毛玻璃主题下用柔和绿，避免在玻璃材质上刺眼
-                activeColor: tokens.softSuccessGreen,
+                activeColor: tokens.successGreen,
               ),
             ],
           ),
@@ -370,7 +368,7 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '界面配色（毛玻璃为苹果风格玻璃半透明质感）',
+                '界面配色（毛玻璃为淡蓝灰、冷静通透的浮层质感）',
                 style: TextStyle(
                   fontSize: kFontSizeSmall,
                   color: tokens.textSecondary,
@@ -458,8 +456,7 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
                     label: _obscureKey ? '显示' : '隐藏',
                     kind: DSButtonKind.secondary,
                     small: true,
-                    onPressed: () =>
-                        setState(() => _obscureKey = !_obscureKey),
+                    onPressed: () => setState(() => _obscureKey = !_obscureKey),
                   ),
                   const Spacer(),
                   Text(
@@ -485,9 +482,7 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        _testResult == 'ok'
-                            ? '连接成功'
-                            : _testResult!,
+                        _testResult == 'ok' ? '连接成功' : _testResult!,
                         style: TextStyle(
                           fontSize: kFontSizeSmall,
                           color: _testResult == 'ok'
@@ -505,8 +500,7 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
                 child: DSButton(
                   label: '保存设置',
                   onPressed: _save,
-                  // 毛玻璃主题下用柔和蓝，避免在玻璃材质上刺眼
-                  color: tokens.softAccentBlue,
+                  color: tokens.accentBlue,
                 ),
               ),
             ],
@@ -612,14 +606,12 @@ class _SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = DSTokensScope.of(context);
-    return DSGlassSurface(
-      borderRadius: BorderRadius.circular(kRadiusCard),
-      // 毛玻璃主题下分区卡片呈玻璃质感（着色+描边，不嵌套模糊——
-      // 弹窗已提供模糊，避免"左白右黑"采样异常）；浅色/深色保持原卡片视觉
-      blur: false,
-      fallbackColor: tokens.cardBackground,
-      fallbackShadow: false,
-      border: Border.all(color: tokens.divider),
+    return Container(
+      decoration: BoxDecoration(
+        color: tokens.cardBackground,
+        borderRadius: BorderRadius.circular(kRadiusCard),
+        border: Border.all(color: tokens.divider),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -641,4 +633,3 @@ class _SectionCard extends StatelessWidget {
     );
   }
 }
-

@@ -36,12 +36,14 @@ void main() {
   });
 
   Future<int> seed(String title, DateTime start) {
-    return dao.insertEvent(EventsCompanion(
-      title: Value(title),
-      start: Value(start),
-      allDay: const Value(false),
-      sourceType: const Value(EventSourceType.manual),
-    ));
+    return dao.insertEvent(
+      EventsCompanion(
+        title: Value(title),
+        start: Value(start),
+        allDay: const Value(false),
+        sourceType: const Value(EventSourceType.manual),
+      ),
+    );
   }
 
   Future<void> pumpApp(WidgetTester tester) async {
@@ -170,9 +172,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('batch-delete-confirm')));
     await tester.pump(const Duration(milliseconds: 200));
     expect(find.text('批量删除'), findsOneWidget);
-    await tester.tap(
-      find.byKey(const ValueKey('batch-delete-confirm-dialog')),
-    );
+    await tester.tap(find.byKey(const ValueKey('batch-delete-confirm-dialog')));
     await tester.pump(const Duration(milliseconds: 300));
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 120)),
@@ -220,8 +220,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('回收站是空的'), findsOneWidget);
     expect(await tester.runAsync(() => dao.getTrashCount()), 0);
-    final monthEvents =
-        await tester.runAsync(() => dao.getMonth(DateTime(now.year, now.month)));
+    final monthEvents = await tester.runAsync(
+      () => dao.getMonth(DateTime(now.year, now.month)),
+    );
     expect(monthEvents, hasLength(1));
 
     // 关闭回收站 → 再删除 → 重开回收站（一次性查询需重新加载）
@@ -277,9 +278,8 @@ void main() {
     expect(find.text('毛玻璃'), findsOneWidget);
 
     // 默认浅色：DSTokensScope 提供 light
-    DSTokens tokensOf() => DSTokensScope.of(
-          tester.element(find.byType(AppShell)),
-        );
+    DSTokens tokensOf() =>
+        DSTokensScope.of(tester.element(find.byType(AppShell)));
     expect(tokensOf().glassBlurSigma, 0);
     expect(tokensOf().mainBackground, DSTokens.light.mainBackground);
 
@@ -294,9 +294,7 @@ void main() {
     expect(tokensOf().dialogBackground, DSTokens.dark.dialogBackground);
     // 持久化到数据库
     expect(
-      await tester.runAsync(
-        () => SettingsDao(db).get(kSettingThemeMode),
-      ),
+      await tester.runAsync(() => SettingsDao(db).get(kSettingThemeMode)),
       kThemeModeDark,
     );
 
@@ -308,10 +306,10 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 100));
     expect(tokensOf().glassBlurSigma, greaterThan(0));
-    expect(tokensOf().textPrimary, DSTokens.light.textPrimary);
+    expect(tokensOf().textPrimary, DSTokens.glass.textPrimary);
+    expect(tokensOf().accentBlue, const Color(0xFF3F7FC4));
 
-    // 主界面毛玻璃（HIG）：窗口主背景为实色（无整窗模糊），
-    // 玻璃质感由浮层呈现——输入条（AppShell 内的 BackdropFilter）与分区卡片
+    // 玻璃只用于顶层浮层：输入条为轻玻璃，设置窗口为强玻璃。
     expect(
       find.descendant(
         of: find.byType(AppShell),
@@ -319,13 +317,25 @@ void main() {
       ),
       findsWidgets,
     );
-    // 设置分区卡片毛玻璃：分区内亦存在 DSGlassSurface（嵌套玻璃）
+    final kinds = tester
+        .widgetList<DSGlassSurface>(find.byType(DSGlassSurface))
+        .map((surface) => surface.kind);
+    expect(kinds, contains(DSGlassSurfaceKind.floating));
+    expect(kinds, contains(DSGlassSurfaceKind.dialog));
+    // 设置分组是普通清晰表面，不再嵌套玻璃或 BackdropFilter。
     expect(
       find.descendant(
         of: find.byType(SettingsDialogBody),
         matching: find.byType(DSGlassSurface),
       ),
-      findsWidgets,
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(SettingsDialogBody),
+        matching: find.byType(BackdropFilter),
+      ),
+      findsNothing,
     );
 
     // 收尾

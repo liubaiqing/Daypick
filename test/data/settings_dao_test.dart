@@ -43,15 +43,33 @@ void main() {
     expect(await dao.get(kSettingThemeMode), kThemeModeLight);
   });
 
-  test('DSTokens 主题三态：毛玻璃基于浅色派生、深色亮度分层', () {
-    // 毛玻璃：文字/强调色与浅色一致，仅背景/描边/模糊不同
-    expect(DSTokens.glass.textPrimary, DSTokens.light.textPrimary);
-    expect(DSTokens.glass.accentBlue, DSTokens.light.accentBlue);
+  test('DSTokens 主题三态：毛玻璃冷静通透色板、深色亮度分层', () {
+    // 毛玻璃使用独立的冷蓝灰色板与统一强调色。
+    expect(DSTokens.glass.mainBackground, const Color(0xFFF3F6FA));
+    expect(DSTokens.glass.textPrimary, const Color(0xFF1B2430));
+    expect(DSTokens.glass.textSecondary, const Color(0xFF667487));
+    expect(DSTokens.glass.accentBlue, const Color(0xFF3F7FC4));
+    expect(DSTokens.glass.successGreen, const Color(0xFF3C9B70));
     expect(DSTokens.glass.glassBlurSigma, greaterThan(0));
+    expect(
+      DSTokens.glass.glassDialogBlurSigma,
+      greaterThan(DSTokens.glass.glassBlurSigma),
+    );
     expect(DSTokens.glass.glassSurface, isNot(DSTokens.light.glassSurface));
+    expect(DSTokens.glass.glassSurface, DSTokens.glass.cardBackground);
+    expect(
+      DSTokens.glass.dialogBackground.a,
+      greaterThan(DSTokens.glass.glassSurface.a),
+    );
+    expect(
+      DSTokens.glass.modalBarrier.a,
+      lessThan(DSTokens.light.modalBarrier.a),
+    );
     // 浅色/深色不启用玻璃
     expect(DSTokens.light.glassBlurSigma, 0);
     expect(DSTokens.dark.glassBlurSigma, 0);
+    expect(DSTokens.light.glassDialogBlurSigma, 0);
+    expect(DSTokens.dark.glassDialogBlurSigma, 0);
     // 深色亮度分层：主背景 < 卡片 < 弹层（亮度递增）
     expect(
       DSTokens.dark.mainBackground.computeLuminance(),
@@ -64,28 +82,11 @@ void main() {
     // 深色移除投影
     expect(DSTokens.dark.panelShadowColor, const Color(0x00000000));
     expect(DSTokens.dark.cardShadowColor, const Color(0x00000000));
-    // 毛玻璃材质：反光渐变着色（高光>透明）与渐变边缘描边
+    // 毛玻璃材质只保留轻微反光渐变（左上高光 > 右下）。
     expect(
       DSTokens.glass.glassTintStart.a,
       greaterThan(DSTokens.glass.glassTintEnd.a),
     );
-    expect(
-      DSTokens.glass.glassEdgeStart.a,
-      greaterThan(DSTokens.glass.glassEdgeEnd.a),
-    );
     expect(DSTokens.light.glassTintStart.a, 0);
-    // 柔和强调色：仅毛玻璃主题与主色不同（设置窗口按钮/开关用，
-    // 避免玻璃材质上刺眼）；浅色/深色与主色一致
-    expect(
-      DSTokens.glass.softAccentBlue,
-      isNot(DSTokens.glass.accentBlue),
-    );
-    expect(
-      DSTokens.glass.softSuccessGreen,
-      isNot(DSTokens.glass.successGreen),
-    );
-    expect(DSTokens.light.softAccentBlue, DSTokens.light.accentBlue);
-    expect(DSTokens.light.softSuccessGreen, DSTokens.light.successGreen);
-    expect(DSTokens.dark.softAccentBlue, DSTokens.dark.accentBlue);
   });
 }

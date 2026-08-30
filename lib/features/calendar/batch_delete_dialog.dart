@@ -17,20 +17,23 @@ import '../../shared/design/dstokens_scope.dart';
 
 /// 弹出批量删除窗口；返回 true 表示发生过删除。
 Future<bool?> showBatchDeleteDialog(BuildContext context) {
-  final animOn = ProviderScope.containerOf(context, listen: false)
-          .read(animationsEnabledProvider)
-          .value ??
+  final tokens = DSTokensScope.of(context);
+  final animOn = ProviderScope.containerOf(
+        context,
+        listen: false,
+      ).read(animationsEnabledProvider).value ??
       true;
   final transition = animOn ? kDurationQuick : Duration.zero;
   return showGeneralDialog<bool>(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'batch-delete',
-    barrierColor: Colors.black.withValues(alpha: 0.32),
+    barrierColor: tokens.modalBarrier,
     transitionDuration: transition,
     pageBuilder: (context, _, _) {
       return Center(
         child: DSGlassSurface(
+          kind: DSGlassSurfaceKind.dialog,
           width: 560,
           constraints: BoxConstraints(
             maxHeight: MediaQuery.sizeOf(context).height * 0.82,
@@ -42,9 +45,10 @@ Future<bool?> showBatchDeleteDialog(BuildContext context) {
     transitionBuilder: (context, animation, _, child) => FadeTransition(
       opacity: animation,
       child: ScaleTransition(
-        scale: Tween<double>(begin: 0.97, end: 1.0).animate(
-          CurvedAnimation(parent: animation, curve: Curves.easeOut),
-        ),
+        scale: Tween<double>(
+          begin: 0.97,
+          end: 1.0,
+        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
         child: child,
       ),
     ),
@@ -184,9 +188,7 @@ class _BatchDeleteDialogBodyState extends ConsumerState<BatchDeleteDialogBody> {
         ),
         Expanded(
           child: _loading
-              ? const Center(
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
+              ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
               : _events.isEmpty
                   ? Center(
                       child: Text(
@@ -242,9 +244,8 @@ class _BatchDeleteDialogBodyState extends ConsumerState<BatchDeleteDialogBody> {
                 key: const ValueKey('batch-delete-confirm'),
                 label: _deleting ? '删除中…' : '删除',
                 kind: DSButtonKind.destructive,
-                onPressed: _selected.isEmpty || _deleting
-                    ? null
-                    : _confirmDelete,
+                onPressed:
+                    _selected.isEmpty || _deleting ? null : _confirmDelete,
               ),
             ],
           ),

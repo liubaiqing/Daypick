@@ -17,22 +17,24 @@ Future<T?> showDSDialog<T>(
   required Widget content,
   required List<Widget> actions,
 }) {
+  final tokens = DSTokensScope.of(context);
   // 动画开关：关闭时过渡瞬间完成
-  final animOn = ProviderScope.containerOf(context, listen: false)
-          .read(animationsEnabledProvider)
-          .value ??
+  final animOn = ProviderScope.containerOf(
+        context,
+        listen: false,
+      ).read(animationsEnabledProvider).value ??
       true;
   final transition = animOn ? kDurationQuick : Duration.zero;
   return showGeneralDialog<T>(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'dialog',
-    barrierColor: Colors.black.withValues(alpha: 0.32),
+    barrierColor: tokens.modalBarrier,
     transitionDuration: transition,
     pageBuilder: (context, _, _) {
-      final tokens = DSTokensScope.of(context);
       return Center(
         child: DSGlassSurface(
+          kind: DSGlassSurfaceKind.dialog,
           width: 420,
           constraints: BoxConstraints(
             maxHeight: MediaQuery.sizeOf(context).height * 0.8,
@@ -75,9 +77,10 @@ Future<T?> showDSDialog<T>(
     transitionBuilder: (context, animation, _, child) => FadeTransition(
       opacity: animation,
       child: ScaleTransition(
-        scale: Tween<double>(begin: 0.97, end: 1.0).animate(
-          CurvedAnimation(parent: animation, curve: Curves.easeOut),
-        ),
+        scale: Tween<double>(
+          begin: 0.97,
+          end: 1.0,
+        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
         child: child,
       ),
     ),

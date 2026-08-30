@@ -1,10 +1,8 @@
 /// 应用外壳：自绘标题栏（右上角窗口按钮）+ 全屏日历 + 左下角设置圆钮；
 /// 全窗口图片拖拽上传。对应技术开发文档第 9.1 / 9.2 节。
 ///
-/// 毛玻璃主题（文档 9.4.2，Apple HIG Materials）：**窗口主背景为实色**
-/// （应用内无桌面内容可透），玻璃质感由浮层呈现——输入条/弹窗/分区卡片
-/// 经 DSGlassSurface 模糊背后真实内容。主背景仅用极浅的半透明白渐变
-/// 提供微妙层次，不做整窗模糊（性能）。
+/// 毛玻璃主题使用淡蓝灰环境背景；输入条和弹窗等顶层浮层经
+/// DSGlassSurface 模糊背后真实内容。月视图、列表和设置分组不做模糊。
 library;
 
 import 'dart:async';
@@ -50,25 +48,9 @@ class _AppShellState extends ConsumerState<AppShell> {
       child: Stack(
         children: [
           Positioned.fill(
-            child: ColoredBox(
-              color: isGlass ? const Color(0xFFF2F2F5) : tokens.mainBackground,
-              child: isGlass
-                  // 毛玻璃主题主背景：极浅半透明白渐变（微妙层次，非整窗模糊）
-                  ? Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.white.withValues(alpha: 0.92),
-                            Colors.white.withValues(alpha: 0.78),
-                          ],
-                          begin: const Alignment(-0.8, -0.8),
-                          end: const Alignment(0.6, 0.7),
-                        ),
-                      ),
-                      child: _buildBody(context),
-                    )
-                  : _buildBody(context),
-            ),
+            child: isGlass
+                ? _GlassAmbientBackground(child: _buildBody(context, true))
+                : _buildBody(context, false),
           ),
           // 窗口边缘缩放热区：MouseRegion 显示缩放光标（Flutter 框架光标），
           // 按下经 window_manager.startResizing 触发系统缩放循环
@@ -78,10 +60,11 @@ class _AppShellState extends ConsumerState<AppShell> {
     );
   }
 
-  Widget _buildBody(BuildContext context) {
+  Widget _buildBody(BuildContext context, bool isGlass) {
     final tokens = DSTokensScope.of(context);
     return ColoredBox(
-      color: tokens.mainBackground,
+      // 轻微白色可读性蒙层：保留环境光晕，同时让日历文字始终清楚。
+      color: isGlass ? const Color(0x52FFFFFF) : tokens.mainBackground,
       child: Column(
         children: [
           const _TitleBar(),
@@ -101,6 +84,48 @@ class _AppShellState extends ConsumerState<AppShell> {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 玻璃背后的应用内环境层。窗口仍保持不透明，避免依赖系统桌面合成；
+/// 两处低强度光晕只为浮层提供可感知的模糊与景深。
+class _GlassAmbientBackground extends StatelessWidget {
+  const _GlassAmbientBackground({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = DSTokensScope.of(context);
+    return ColoredBox(
+      color: tokens.mainBackground,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment(-0.9, -0.9),
+                radius: 1.05,
+                colors: [Color(0xCCDCEBFA), Color(0x00DCEBFA)],
+                stops: [0, 1],
+              ),
+            ),
+          ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment(0.35, 1.05),
+                radius: 0.95,
+                colors: [Color(0xB3E7F0F6), Color(0x00E7F0F6)],
+                stops: [0, 1],
+              ),
+            ),
+          ),
+          child,
         ],
       ),
     );
@@ -520,8 +545,8 @@ class _WindowButtonState extends State<_WindowButton> {
     final bg = widget.danger && _hovered
         ? const Color(0xFFE81123) // Windows 关闭按钮 hover 红
         : _hovered
-        ? tokens.textPrimary.withValues(alpha: 0.06)
-        : Colors.transparent;
+            ? tokens.textPrimary.withValues(alpha: 0.06)
+            : Colors.transparent;
     final fg = widget.danger && _hovered
         ? Colors.white
         : tokens.textPrimary.withValues(alpha: 0.75);

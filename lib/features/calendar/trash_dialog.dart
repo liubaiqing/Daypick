@@ -16,20 +16,23 @@ import '../../shared/design/dstokens_scope.dart';
 
 /// 弹出回收站窗口；返回 true 表示发生任何变更（恢复/清理）。
 Future<bool?> showTrashDialog(BuildContext context) {
-  final animOn = ProviderScope.containerOf(context, listen: false)
-          .read(animationsEnabledProvider)
-          .value ??
+  final tokens = DSTokensScope.of(context);
+  final animOn = ProviderScope.containerOf(
+        context,
+        listen: false,
+      ).read(animationsEnabledProvider).value ??
       true;
   final transition = animOn ? kDurationQuick : Duration.zero;
   return showGeneralDialog<bool>(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'trash',
-    barrierColor: Colors.black.withValues(alpha: 0.32),
+    barrierColor: tokens.modalBarrier,
     transitionDuration: transition,
     pageBuilder: (context, _, _) {
       return Center(
         child: DSGlassSurface(
+          kind: DSGlassSurfaceKind.dialog,
           width: 560,
           constraints: BoxConstraints(
             maxHeight: MediaQuery.sizeOf(context).height * 0.82,
@@ -41,9 +44,10 @@ Future<bool?> showTrashDialog(BuildContext context) {
     transitionBuilder: (context, animation, _, child) => FadeTransition(
       opacity: animation,
       child: ScaleTransition(
-        scale: Tween<double>(begin: 0.97, end: 1.0).animate(
-          CurvedAnimation(parent: animation, curve: Curves.easeOut),
-        ),
+        scale: Tween<double>(
+          begin: 0.97,
+          end: 1.0,
+        ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOut)),
         child: child,
       ),
     ),
@@ -144,9 +148,7 @@ class _TrashDialogBodyState extends ConsumerState<TrashDialogBody> {
         Container(height: 1, color: tokens.divider),
         Expanded(
           child: _loading
-              ? const Center(
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
+              ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
               : trashList(),
         ),
         Container(height: 1, color: tokens.divider),
@@ -181,6 +183,7 @@ class _TrashDialogBodyState extends ConsumerState<TrashDialogBody> {
       ],
     );
   }
+
   /// 回收站列表主体（空态 / 行列表）
   Widget trashList() {
     final tokens = DSTokensScope.of(context);
@@ -232,9 +235,8 @@ class _TrashRowState extends State<_TrashRow> {
   Widget build(BuildContext context) {
     final tokens = DSTokensScope.of(context);
     final e = widget.event;
-    final time = e.allDay
-        ? '全天'
-        : '${_two(e.start.hour)}:${_two(e.start.minute)}';
+    final time =
+        e.allDay ? '全天' : '${_two(e.start.hour)}:${_two(e.start.minute)}';
     final deletedAt = e.deletedAt;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
