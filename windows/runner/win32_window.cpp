@@ -213,6 +213,32 @@ Win32Window::MessageHandler(HWND hwnd,
       }
       return 0;
 
+    case WM_NCHITTEST: {
+      // 无边框窗口（window_manager setAsFrameless 移除了系统缩放热区，
+      // 四边默认返回 HTCLIENT 导致无法拖拽缩放）：
+      // 手动在边缘 6px 内返回缩放命中代码，恢复自由缩放能力。
+      constexpr LONG kResizeEdge = 6;
+      RECT rect;
+      GetWindowRect(hwnd, &rect);
+      const POINT pt = {static_cast<LONG>(LOWORD(lparam)),
+                        static_cast<LONG>(HIWORD(lparam))};
+      const bool hit_left = pt.x >= rect.left && pt.x < rect.left + kResizeEdge;
+      const bool hit_right =
+          pt.x > rect.right - kResizeEdge && pt.x <= rect.right;
+      const bool hit_top = pt.y >= rect.top && pt.y < rect.top + kResizeEdge;
+      const bool hit_bottom =
+          pt.y > rect.bottom - kResizeEdge && pt.y <= rect.bottom;
+      if (hit_top && hit_left) return HTTOPLEFT;
+      if (hit_top && hit_right) return HTTOPRIGHT;
+      if (hit_bottom && hit_left) return HTBOTTOMLEFT;
+      if (hit_bottom && hit_right) return HTBOTTOMRIGHT;
+      if (hit_left) return HTLEFT;
+      if (hit_right) return HTRIGHT;
+      if (hit_top) return HTTOP;
+      if (hit_bottom) return HTBOTTOM;
+      break;  // 客户区走默认命中
+    }
+
     case WM_DWMCOLORIZATIONCOLORCHANGED:
       UpdateTheme(hwnd);
       return 0;
