@@ -43,24 +43,33 @@ class _AppShellState extends ConsumerState<AppShell> {
           ref.read(droppedImagesProvider.notifier).set(paths);
         }
       },
-      child: ColoredBox(
-        color: isGlass ? const Color(0xFFF2F2F5) : tokens.mainBackground,
-        child: isGlass
-            // 毛玻璃主题主背景：极浅半透明白渐变（微妙层次，非整窗模糊）
-            ? Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.white.withValues(alpha: 0.92),
-                      Colors.white.withValues(alpha: 0.78),
-                    ],
-                    begin: const Alignment(-0.8, -0.8),
-                    end: const Alignment(0.6, 0.7),
-                  ),
-                ),
-                child: _buildBody(context),
-              )
-            : _buildBody(context),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: ColoredBox(
+              color: isGlass ? const Color(0xFFF2F2F5) : tokens.mainBackground,
+              child: isGlass
+                  // 毛玻璃主题主背景：极浅半透明白渐变（微妙层次，非整窗模糊）
+                  ? Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.white.withValues(alpha: 0.92),
+                            Colors.white.withValues(alpha: 0.78),
+                          ],
+                          begin: const Alignment(-0.8, -0.8),
+                          end: const Alignment(0.6, 0.7),
+                        ),
+                      ),
+                      child: _buildBody(context),
+                    )
+                  : _buildBody(context),
+            ),
+          ),
+          // 窗口边缘缩放热区（无边框窗口：MouseRegion 显示缩放光标，
+          // 按下经 window_manager.startResizing 进入系统缩放循环）
+          const Positioned.fill(child: _WindowResizeEdges()),
+        ],
       ),
     );
   }
@@ -89,6 +98,107 @@ class _AppShellState extends ConsumerState<AppShell> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 窗口边缘缩放热区（无边框窗口恢复自由缩放，文档 9.1 节）：
+/// 四边/四角各 6px 的 MouseRegion——悬停显示对应缩放光标（Flutter 框架光标），
+/// 按下经 window_manager.startResizing 进入系统缩放循环。
+/// （window_manager setAsFrameless 移除了系统边框热区，此为官方推荐方案：
+/// resize_edge.dart + startResizing）
+class _WindowResizeEdges extends StatelessWidget {
+  const _WindowResizeEdges();
+
+  static const double _edge = 6;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // 上边 / 下边
+        Positioned(
+          left: _edge,
+          right: _edge,
+          top: 0,
+          height: _edge,
+          child: _edgeZone(ResizeEdge.top, SystemMouseCursors.resizeUpDown),
+        ),
+        Positioned(
+          left: _edge,
+          right: _edge,
+          bottom: 0,
+          height: _edge,
+          child: _edgeZone(ResizeEdge.bottom, SystemMouseCursors.resizeUpDown),
+        ),
+        // 左边 / 右边
+        Positioned(
+          top: _edge,
+          bottom: _edge,
+          left: 0,
+          width: _edge,
+          child: _edgeZone(ResizeEdge.left, SystemMouseCursors.resizeLeftRight),
+        ),
+        Positioned(
+          top: _edge,
+          bottom: _edge,
+          right: 0,
+          width: _edge,
+          child:
+              _edgeZone(ResizeEdge.right, SystemMouseCursors.resizeLeftRight),
+        ),
+        // 四角
+        Positioned(
+          top: 0,
+          left: 0,
+          width: _edge * 2,
+          height: _edge * 2,
+          child: _edgeZone(
+            ResizeEdge.topLeft,
+            SystemMouseCursors.resizeUpLeftDownRight,
+          ),
+        ),
+        Positioned(
+          top: 0,
+          right: 0,
+          width: _edge * 2,
+          height: _edge * 2,
+          child: _edgeZone(
+            ResizeEdge.topRight,
+            SystemMouseCursors.resizeUpRightDownLeft,
+          ),
+        ),
+        Positioned(
+          bottom: 0,
+          left: 0,
+          width: _edge * 2,
+          height: _edge * 2,
+          child: _edgeZone(
+            ResizeEdge.bottomLeft,
+            SystemMouseCursors.resizeUpRightDownLeft,
+          ),
+        ),
+        Positioned(
+          bottom: 0,
+          right: 0,
+          width: _edge * 2,
+          height: _edge * 2,
+          child: _edgeZone(
+            ResizeEdge.bottomRight,
+            SystemMouseCursors.resizeUpLeftDownRight,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _edgeZone(ResizeEdge edge, MouseCursor cursor) {
+    return MouseRegion(
+      cursor: cursor,
+      child: Listener(
+        onPointerDown: (_) => windowManager.startResizing(edge),
+        child: const SizedBox.expand(),
       ),
     );
   }
