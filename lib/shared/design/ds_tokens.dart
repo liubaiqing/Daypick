@@ -21,6 +21,8 @@ class DSTokens {
     required this.successGreen,
     required this.warningOrange,
     required this.yellow,
+    required this.softAccentBlue,
+    required this.softSuccessGreen,
     required this.windowButtonClose,
     required this.windowButtonMinimize,
     required this.windowButtonMaximize,
@@ -57,6 +59,13 @@ class DSTokens {
   final Color successGreen;
   final Color warningOrange;
   final Color yellow;
+
+  /// 柔和强调蓝：毛玻璃主题下为低饱和柔和版（设置窗口按钮用，
+  /// 避免在玻璃材质上刺眼）；浅色/深色主题下与 accentBlue 一致。
+  final Color softAccentBlue;
+
+  /// 柔和强调绿：同上（设置窗口开关用）。
+  final Color softSuccessGreen;
 
   // ---- 交通灯窗口按钮（见文档 9.1 节）----
   final Color windowButtonClose;
@@ -99,6 +108,8 @@ class DSTokens {
     successGreen: Color(0xFF34C759),
     warningOrange: Color(0xFFFF9500),
     yellow: Color(0xFFFFCC00),
+    softAccentBlue: Color(0xFF007AFF),
+    softSuccessGreen: Color(0xFF34C759),
     windowButtonClose: Color(0xFFFF5F57),
     windowButtonMinimize: Color(0xFFFEBC2E),
     windowButtonMaximize: Color(0xFF28C840),
@@ -127,6 +138,8 @@ class DSTokens {
     successGreen: Color(0xFF32D74B),
     warningOrange: Color(0xFFFF9F0A),
     yellow: Color(0xFFFFD60A),
+    softAccentBlue: Color(0xFF0A84FF),
+    softSuccessGreen: Color(0xFF32D74B),
     windowButtonClose: Color(0xFFFF5F57),
     windowButtonMinimize: Color(0xFFFEBC2E),
     windowButtonMaximize: Color(0xFF28C840),
@@ -155,12 +168,14 @@ class DSTokens {
     textPrimary: Color(0xD9000000),
     textSecondary: Color(0x80000000),
     divider: Color(0x1A000000),
-    // 毛玻璃强调色：低饱和柔和版 + 半透明（融于玻璃材质，Apple vibrancy 思路）
-    accentBlue: Color(0xE67FAEE8),
-    dangerRed: Color(0xE6E88A94),
-    successGreen: Color(0xE67CC99B),
-    warningOrange: Color(0xE6E8B47C),
-    yellow: Color(0xE6E2CC78),
+    accentBlue: Color(0xFF007AFF),
+    dangerRed: Color(0xFFFF3B30),
+    successGreen: Color(0xFF34C759),
+    warningOrange: Color(0xFFFF9500),
+    yellow: Color(0xFFFFCC00),
+    // 毛玻璃主题下的柔和强调色（设置窗口按钮/开关用，玻璃材质上不刺眼）
+    softAccentBlue: Color(0xE67FAEE8),
+    softSuccessGreen: Color(0xE67CC99B),
     windowButtonClose: Color(0xFFFF5F57),
     windowButtonMinimize: Color(0xFFFEBC2E),
     windowButtonMaximize: Color(0xFF28C840),

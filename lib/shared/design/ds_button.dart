@@ -15,12 +15,16 @@ class DSButton extends StatefulWidget {
     this.onPressed,
     this.kind = DSButtonKind.primary,
     this.small = false,
+    this.color,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final DSButtonKind kind;
   final bool small;
+
+  /// 覆盖主题强调色（如设置窗口在毛玻璃主题下用柔和蓝）
+  final Color? color;
 
   @override
   State<DSButton> createState() => _DSButtonState();
@@ -39,13 +43,13 @@ class _DSButtonState extends State<DSButton> {
     Color fg;
     switch (widget.kind) {
       case DSButtonKind.primary:
-        bg = tokens.accentBlue;
+        bg = widget.color ?? tokens.accentBlue;
         fg = Colors.white;
       case DSButtonKind.secondary:
         bg = tokens.textPrimary.withValues(alpha: 0.08);
         fg = tokens.textPrimary;
       case DSButtonKind.destructive:
-        bg = tokens.dangerRed;
+        bg = widget.color ?? tokens.dangerRed;
         fg = Colors.white;
     }
 

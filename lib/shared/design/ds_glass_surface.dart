@@ -18,15 +18,6 @@ import 'package:flutter/material.dart';
 import 'ds_tokens.dart';
 import 'dstokens_scope.dart';
 
-/// 饱和度补偿颜色矩阵（saturation 1.8，HIG Materials 惯例）。
-/// 仅增强有彩色；中性色（黑/白/灰文字）输出不变，不影响前景可读性。
-final List<double> _kSaturationMatrix = [
-  0.2126 + 1.8 * 0.7873, 0.7152 - 1.8 * 0.7152, 0.0722 - 1.8 * 0.0722, 0, 0,
-  0.2126 - 1.8 * 0.2126, 0.7152 + 1.8 * 0.2848, 0.0722 - 1.8 * 0.0722, 0, 0,
-  0.2126 - 1.8 * 0.2126, 0.7152 - 1.8 * 0.7152, 0.0722 + 1.8 * 0.9278, 0, 0,
-  0, 0, 0, 1, 0,
-];
-
 class DSGlassSurface extends StatelessWidget {
   const DSGlassSurface({
     super.key,
@@ -90,9 +81,10 @@ class DSGlassSurface extends StatelessWidget {
       // 毛玻璃（教程参数）：
       // 1) ClipRRect 裁剪模糊只作用于圆角卡片区域（devgex 要点）
       // 2) BackdropFilter 高斯模糊背景
-      // 3) ColorFiltered 饱和度补偿（HIG，中性文字不受影响）
-      // 4) 渐变着色模拟玻璃反光 + 阴影 spreadRadius=-1（juejin 要点）
-      // 5) 渐变边缘描边模拟玻璃边缘反射（juejin 点睛之笔）
+      // 3) 渐变着色模拟玻璃反光 + 阴影 spreadRadius=-1（juejin 要点）
+      // 4) 渐变边缘描边模拟玻璃边缘反射（juejin 点睛之笔）
+      // 注意：不做 ColorFiltered 饱和度补偿——它会作用于容器内所有
+      // 前景内容（按钮/开关/文字），把强调色重新拉饱和（刺眼根因）。
       surface = ClipRRect(
         borderRadius: radius,
         child: BackdropFilter(
@@ -100,37 +92,34 @@ class DSGlassSurface extends StatelessWidget {
             sigmaX: tokens.glassBlurSigma,
             sigmaY: tokens.glassBlurSigma,
           ),
-          child: ColorFiltered(
-            colorFilter: ColorFilter.matrix(_kSaturationMatrix),
-            child: CustomPaint(
-              painter: _GlassEdgePainter(
-                radius: radius,
-                start: tokens.glassEdgeStart,
-                end: tokens.glassEdgeEnd,
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: radius,
-                  // 玻璃反光渐变：左上高光 → 右下透明
-                  gradient: LinearGradient(
-                    colors: [tokens.glassTintStart, tokens.glassTintEnd],
-                    begin: const Alignment(-1, -1),
-                    end: const Alignment(0.4, 0.6),
-                  ),
-                  border: border ??
-                      Border.all(color: tokens.glassBorder, width: 1),
-                  boxShadow: [
-                    BoxShadow(
-                      color: tokens.panelShadowColor,
-                      offset: const Offset(0, 1),
-                      blurRadius: 24,
-                      // 玻璃阴影：外扩为负，贴合边缘（juejin 要点）
-                      spreadRadius: -1,
-                    ),
-                  ],
+          child: CustomPaint(
+            painter: _GlassEdgePainter(
+              radius: radius,
+              start: tokens.glassEdgeStart,
+              end: tokens.glassEdgeEnd,
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: radius,
+                // 玻璃反光渐变：左上高光 → 右下透明
+                gradient: LinearGradient(
+                  colors: [tokens.glassTintStart, tokens.glassTintEnd],
+                  begin: const Alignment(-1, -1),
+                  end: const Alignment(0.4, 0.6),
                 ),
-                child: child,
+                border: border ??
+                    Border.all(color: tokens.glassBorder, width: 1),
+                boxShadow: [
+                  BoxShadow(
+                    color: tokens.panelShadowColor,
+                    offset: const Offset(0, 1),
+                    blurRadius: 24,
+                    // 玻璃阴影：外扩为负，贴合边缘（juejin 要点）
+                    spreadRadius: -1,
+                  ),
+                ],
               ),
+              child: child,
             ),
           ),
         ),

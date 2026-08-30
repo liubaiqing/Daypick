@@ -12,11 +12,15 @@ class DSSwitch extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.enabled = true,
+    this.activeColor,
   });
 
   final bool value;
   final ValueChanged<bool> onChanged;
   final bool enabled;
+
+  /// 覆盖开启态颜色（如设置窗口在毛玻璃主题下用柔和绿）
+  final Color? activeColor;
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +34,7 @@ class DSSwitch extends StatelessWidget {
         padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
           color: value
-              ? tokens.successGreen
+              ? activeColor ?? tokens.successGreen
               : tokens.textSecondary.withValues(alpha: 0.35),
           borderRadius: BorderRadius.circular(10),
         ),

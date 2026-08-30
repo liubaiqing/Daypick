@@ -355,6 +355,8 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
               DSSwitch(
                 value: _animationsEnabled,
                 onChanged: _toggleAnimations,
+                // 毛玻璃主题下用柔和绿，避免在玻璃材质上刺眼
+                activeColor: tokens.softSuccessGreen,
               ),
             ],
           ),
@@ -500,7 +502,12 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
               const SizedBox(height: 12),
               Align(
                 alignment: Alignment.centerRight,
-                child: DSButton(label: '保存设置', onPressed: _save),
+                child: DSButton(
+                  label: '保存设置',
+                  onPressed: _save,
+                  // 毛玻璃主题下用柔和蓝，避免在玻璃材质上刺眼
+                  color: tokens.softAccentBlue,
+                ),
               ),
             ],
           ),
