@@ -179,7 +179,7 @@ class _EventRowState extends ConsumerState<_EventRow> {
       context,
       title: '删除事件',
       content: Text(
-        '确定删除「${widget.event.title}」吗？此操作不可撤销。',
+        '确定删除「${widget.event.title}」吗？删除后可到回收站恢复。',
         style: TextStyle(
           fontSize: kFontSizeBody,
           color: DSTokensScope.of(context).textPrimary,

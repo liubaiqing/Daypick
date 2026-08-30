@@ -20,6 +20,8 @@ import '../../shared/design/ds_switch.dart';
 import '../../shared/design/ds_text_field.dart';
 import '../../shared/design/ds_tokens.dart';
 import '../../shared/design/dstokens_scope.dart';
+import '../calendar/batch_delete_dialog.dart';
+import '../calendar/trash_dialog.dart';
 
 /// 弹出设置小窗（左下角圆形按钮触发）
 Future<void> showSettingsDialog(BuildContext context) {
@@ -304,6 +306,19 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
     }
   }
 
+  Future<void> _openBatchDelete() async {
+    // 批量删除窗口：按月勾选删除（文档 10.5 节）
+    await showBatchDeleteDialog(context);
+    // 删除可能改变回收站数量，刷新徽标
+    ref.invalidate(trashCountProvider);
+  }
+
+  Future<void> _openTrash() async {
+    // 回收站窗口：恢复 / 彻底清理（文档 10.6 节）
+    await showTrashDialog(context);
+    ref.invalidate(trashCountProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = DSTokensScope.of(context);
@@ -496,9 +511,26 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
                   ),
                 ],
               ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  DSButton(
+                    key: const ValueKey('settings-batch-delete'),
+                    label: '批量删除事件',
+                    kind: DSButtonKind.secondary,
+                    onPressed: _dataBusy ? null : _openBatchDelete,
+                  ),
+                  const SizedBox(width: 8),
+                  // 回收站入口（带待清理数量徽标，文档 10.6 节）
+                  _TrashEntryButton(
+                    count: ref.watch(trashCountProvider).value ?? 0,
+                    onPressed: _dataBusy ? null : _openTrash,
+                  ),
+                ],
+              ),
               const SizedBox(height: 6),
               Text(
-                '导出文件保存在你选择的位置；恢复按 id 合并，已存在的事件跳过。备份不含 API Key。',
+                '导出文件保存在你选择的位置；恢复按 id 合并，已存在的事件跳过。备份不含 API Key。删除的事件先进回收站，可恢复。',
                 style: TextStyle(
                   fontSize: kFontSizeSmall,
                   color: tokens.textSecondary,
@@ -570,6 +602,49 @@ class _SectionCard extends StatelessWidget {
           child,
         ],
       ),
+    );
+  }
+}
+
+/// 回收站入口按钮：`回收站` 标签 + 待清理数量徽标（无则隐藏）
+class _TrashEntryButton extends StatelessWidget {
+  const _TrashEntryButton({required this.count, required this.onPressed});
+
+  final int count;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = DSTokensScope.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        DSButton(
+          key: const ValueKey('settings-trash'),
+          label: '回收站',
+          kind: DSButtonKind.secondary,
+          onPressed: onPressed,
+        ),
+        if (count > 0) ...[
+          const SizedBox(width: 6),
+          Container(
+            key: const ValueKey('trash-badge'),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: tokens.dangerRed.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              '$count',
+              style: TextStyle(
+                fontSize: kFontSizeSmall,
+                fontWeight: FontWeight.w700,
+                color: tokens.dangerRed,
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

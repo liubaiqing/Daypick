@@ -22,13 +22,17 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) => m.createAll(),
-        // 后续版本在此追加迁移步骤（文档 4.4 节），并同步提升 schemaVersion
-        onUpgrade: (m, from, to) async {},
+        onUpgrade: (m, from, to) async {
+          // v1 → v2：回收站软删除字段（文档 4.4 节，老数据全部为 null）
+          if (from < 2) {
+            await m.addColumn(events, events.deletedAt);
+          }
+        },
       );
 }
 

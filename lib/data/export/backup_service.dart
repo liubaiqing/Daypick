@@ -89,43 +89,58 @@ class BackupService {
         continue;
       }
       if (await _dao.getById(id) != null) {
-        skipped++;
+        // 已存在：若为软删除（回收站）则复活并覆盖字段，否则跳过
+        final existing = await _dao.getById(id);
+        if (existing!.deletedAt == null) {
+          skipped++;
+          continue;
+        }
+        await _dao.restoreAndOverwrite(id, _companionFromRaw(raw, id));
+        restored++;
         continue;
       }
-      final endStr = raw['end'] as String?;
-      final location = (raw['location'] as String?)?.trim();
-      final note = (raw['note'] as String?)?.trim();
-      final sourceName = raw['source_type'] as String?;
       await _dao.insertEvent(
-        EventsCompanion(
-          id: Value(id),
-          title: Value(title),
-          location: Value((location == null || location.isEmpty) ? null : location),
-          start: Value(start),
-          end: Value(endStr == null ? null : DateTime.tryParse(endStr)),
-          allDay: Value(raw['all_day'] == true),
-          note: Value((note == null || note.isEmpty) ? null : note),
-          sourceType: Value(
-            EventSourceType.values.firstWhere(
-              (s) => s.name == sourceName,
-              orElse: () => EventSourceType.manual,
-            ),
-          ),
-          sourceText: Value(raw['source_text'] as String?),
-          createdAt: Value(
-            raw['created_at'] is String
-                ? DateTime.tryParse(raw['created_at'] as String) ?? DateTime.now()
-                : DateTime.now(),
-          ),
-          updatedAt: Value(
-            raw['updated_at'] is String
-                ? DateTime.tryParse(raw['updated_at'] as String) ?? DateTime.now()
-                : DateTime.now(),
-          ),
-        ),
+        _companionFromRaw(raw, id),
       );
       restored++;
     }
     return (restored: restored, skipped: skipped);
+  }
+
+  static EventsCompanion _companionFromRaw(
+    Map<String, dynamic> raw,
+    int id,
+  ) {
+    final endStr = raw['end'] as String?;
+    final location = (raw['location'] as String?)?.trim();
+    final note = (raw['note'] as String?)?.trim();
+    final sourceName = raw['source_type'] as String?;
+    return EventsCompanion(
+      id: Value(id),
+      title: Value((raw['title'] as String?)?.trim() ?? ''),
+      location: Value((location == null || location.isEmpty) ? null : location),
+      start: Value(DateTime.tryParse(raw['start'] as String? ?? '') ?? DateTime.now()),
+      end: Value(endStr == null ? null : DateTime.tryParse(endStr)),
+      allDay: Value(raw['all_day'] == true),
+      note: Value((note == null || note.isEmpty) ? null : note),
+      sourceType: Value(
+        EventSourceType.values.firstWhere(
+          (s) => s.name == sourceName,
+          orElse: () => EventSourceType.manual,
+        ),
+      ),
+      sourceText: Value(raw['source_text'] as String?),
+      createdAt: Value(
+        raw['created_at'] is String
+            ? DateTime.tryParse(raw['created_at'] as String) ?? DateTime.now()
+            : DateTime.now(),
+      ),
+      updatedAt: Value(
+        raw['updated_at'] is String
+            ? DateTime.tryParse(raw['updated_at'] as String) ?? DateTime.now()
+            : DateTime.now(),
+      ),
+      deletedAt: const Value(null),
+    );
   }
 }

@@ -5,7 +5,8 @@ import 'package:drift/drift.dart';
 
 import '../../domain/event_source_type.dart';
 
-/// 事件表：库中只存用户已确认的事件（文档 4.3 节）
+/// 事件表：库中只存用户已确认的事件（文档 4.3 节）；
+/// deletedAt 为软删除标记（文档 4.1 节回收站）：null=正常，非 null=已删除时刻。
 class Events extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get title => text()();
@@ -18,6 +19,7 @@ class Events extends Table {
   TextColumn get sourceText => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get deletedAt => dateTime().nullable()();
 }
 
 /// 设置表：parseMode / llmBaseUrl / llmApiKey / llmModel 等

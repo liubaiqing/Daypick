@@ -184,7 +184,7 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
       context,
       title: '撤销保存',
       content: Text(
-        '将从日历中删除该事件，确定撤销吗？',
+        '将从日历中删除该事件（可到回收站恢复），确定撤销吗？',
         style: TextStyle(
           fontSize: kFontSizeBody,
           color: DSTokensScope.of(context).textPrimary,
