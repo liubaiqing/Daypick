@@ -242,7 +242,7 @@ class _MonthViewState extends ConsumerState<MonthView>
                   ),
                   alignment: Alignment.center,
                   child: Text(
-                    '今天',
+                    '跳回今天',
                     style: TextStyle(
                       fontSize: kFontSizeBody,
                       color: tokens.accentBlue,

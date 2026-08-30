@@ -75,6 +75,6 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('settings-close')),
         warnIfMissed: false);
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('今天'), findsOneWidget);
+    expect(find.text('跳回今天'), findsOneWidget);
   }, timeout: const Timeout(Duration(minutes: 3)));
 }
