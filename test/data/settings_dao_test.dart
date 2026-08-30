@@ -44,11 +44,24 @@ void main() {
   });
 
   test('DSTokens 主题三态：毛玻璃基于浅色派生、深色亮度分层', () {
-    // 毛玻璃：文字/强调色与浅色一致，仅背景/描边/模糊不同
+    // 毛玻璃：文字与浅色一致；强调色为低饱和度柔和版（与玻璃质感协调）
     expect(DSTokens.glass.textPrimary, DSTokens.light.textPrimary);
-    expect(DSTokens.glass.accentBlue, DSTokens.light.accentBlue);
     expect(DSTokens.glass.glassBlurSigma, greaterThan(0));
     expect(DSTokens.glass.glassSurface, isNot(DSTokens.light.glassSurface));
+    // 柔和化：玻璃强调色饱和度低于浅色（蓝/绿为代表）
+    double sat(Color c) {
+      final max = [c.r, c.g, c.b].reduce((a, b) => a > b ? a : b);
+      final min = [c.r, c.g, c.b].reduce((a, b) => a < b ? a : b);
+      final l = (max + min) / 2;
+      if (max == min) return 0;
+      return ((max - min) / (1 - (2 * l - 1).abs())).clamp(0.0, 1.0);
+    }
+
+    expect(sat(DSTokens.glass.accentBlue), lessThan(sat(DSTokens.light.accentBlue)));
+    expect(
+      sat(DSTokens.glass.successGreen),
+      lessThan(sat(DSTokens.light.successGreen)),
+    );
     // 浅色/深色不启用玻璃
     expect(DSTokens.light.glassBlurSigma, 0);
     expect(DSTokens.dark.glassBlurSigma, 0);
