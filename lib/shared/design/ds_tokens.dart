@@ -149,17 +149,17 @@ class DSTokens {
     cardShadowColor: Color(0x00000000),
   );
 
-  /// 毛玻璃主题：冷静通透的淡蓝灰环境色板，仅浮层启用背景模糊。
+  /// Apple Liquid Glass 风格：透明折射、环境反射与动态交互。
   static const DSTokens glass = DSTokens(
-    sidebarBackground: Color(0xCCFFFFFF),
-    mainBackground: Color(0xFFF3F6FA),
-    // 轻玻璃浮层：白色 72%；强玻璃弹窗：白色 85%。
-    cardBackground: Color(0xB8FFFFFF),
-    dialogBackground: Color(0xD9FFFFFF),
-    textPrimary: Color(0xFF1B2430),
-    textSecondary: Color(0xFF667487),
-    divider: Color(0x80C8D3DF),
-    accentBlue: Color(0xFF3F7FC4),
+    sidebarBackground: Color(0x8CFFFFFF),
+    mainBackground: Color(0xFFEDF3FA),
+    // 内容卡片为 32% 标准材质；Liquid Glass 本体使用更透明的独立填充。
+    cardBackground: Color(0x52FFFFFF),
+    dialogBackground: Color(0x8FFFFFFF),
+    textPrimary: Color(0xFF17202B),
+    textSecondary: Color(0xFF59697D),
+    divider: Color(0x667A8EA6),
+    accentBlue: Color(0xFF3D7EC5),
     dangerRed: Color(0xFFD95757),
     successGreen: Color(0xFF3C9B70),
     warningOrange: Color(0xFFD98A31),
@@ -167,16 +167,16 @@ class DSTokens {
     windowButtonClose: Color(0xFFFF5F57),
     windowButtonMinimize: Color(0xFFFEBC2E),
     windowButtonMaximize: Color(0xFF28C840),
-    glassSurface: Color(0xB8FFFFFF),
-    glassBorder: Color(0xB3FFFFFF),
-    glassBlurSigma: 16,
-    glassDialogBlurSigma: 20,
-    // 基础明度由 glassSurface/dialogBackground 提供，这里只叠加轻微高光。
-    glassTintStart: Color(0x24FFFFFF),
-    glassTintEnd: Color(0x0FFFFFFF),
-    modalBarrier: Color(0x29182736),
-    panelShadowColor: Color(0x29182736),
-    cardShadowColor: Color(0x1F2C3E50),
+    // clear glass 以透明和边缘透镜为主；regular glass 稍厚但仍可见背景。
+    glassSurface: Color(0x3DFFFFFF),
+    glassBorder: Color(0x8FFFFFFF),
+    glassBlurSigma: 7.5,
+    glassDialogBlurSigma: 14,
+    glassTintStart: Color(0x3DFFFFFF),
+    glassTintEnd: Color(0x08FFFFFF),
+    modalBarrier: Color(0x1F16202B),
+    panelShadowColor: Color(0x36182736),
+    cardShadowColor: Color(0x2B182736),
   );
 }
 
@@ -187,6 +187,7 @@ const double kRadiusCard = 12;
 const double kRadiusDialog = 14;
 const double kRadiusComposer = 22; // 主界面输入条（胶囊形）
 const double kRadiusPanel = 14; // 解析结果面板
+const double kRadiusLiquidDialog = 22; // Liquid Glass 强浮层（同心大圆角）
 
 // ---- 阴影（见文档 9.5 节）----
 const double kShadowCardOpacity = 0.08;

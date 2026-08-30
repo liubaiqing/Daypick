@@ -307,7 +307,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(tokensOf().glassBlurSigma, greaterThan(0));
     expect(tokensOf().textPrimary, DSTokens.glass.textPrimary);
-    expect(tokensOf().accentBlue, const Color(0xFF3F7FC4));
+    expect(tokensOf().accentBlue, const Color(0xFF3D7EC5));
 
     // 玻璃只用于顶层浮层：输入条为轻玻璃，设置窗口为强玻璃。
     expect(
@@ -322,6 +322,13 @@ void main() {
         .map((surface) => surface.kind);
     expect(kinds, contains(DSGlassSurfaceKind.floating));
     expect(kinds, contains(DSGlassSurfaceKind.dialog));
+    expect(
+      find.descendant(
+        of: find.byType(DSGlassSurface),
+        matching: find.byType(AnimatedScale),
+      ),
+      findsWidgets,
+    );
     // 设置分组是普通清晰表面，不再嵌套玻璃或 BackdropFilter。
     expect(
       find.descendant(

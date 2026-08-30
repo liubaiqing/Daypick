@@ -64,6 +64,7 @@ class _DSSegmentedControlState extends State<DSSegmentedControl> {
   @override
   Widget build(BuildContext context) {
     final tokens = DSTokensScope.of(context);
+    final isGlass = tokens.glassBlurSigma > 0;
     final count = widget.options.length;
     // 段宽 = 最宽文字 + 两侧留白（等宽分段，滑块无需测量即可对齐）
     var maxLabel = 0.0;
@@ -76,8 +77,13 @@ class _DSSegmentedControlState extends State<DSSegmentedControl> {
     return Container(
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        color: tokens.textPrimary.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(8),
+        color: isGlass
+            ? const Color(0x1FFFFFFF)
+            : tokens.textPrimary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(isGlass ? 13 : 8),
+        border: isGlass
+            ? Border.all(color: const Color(0x47FFFFFF), width: 0.8)
+            : null,
       ),
       // 显式尺寸：内容自适应（不依赖父约束，可在 Row 非 flex 槽位中使用）
       child: SizedBox(
@@ -96,13 +102,19 @@ class _DSSegmentedControlState extends State<DSSegmentedControl> {
               width: segWidth,
               child: Container(
                 decoration: BoxDecoration(
-                  color: tokens.cardBackground,
-                  borderRadius: BorderRadius.circular(6),
+                  color:
+                      isGlass ? const Color(0x66FFFFFF) : tokens.cardBackground,
+                  borderRadius: BorderRadius.circular(isGlass ? 11 : 6),
+                  border: isGlass
+                      ? Border.all(color: const Color(0xA3FFFFFF), width: 0.8)
+                      : null,
                   boxShadow: [
                     BoxShadow(
-                      color: tokens.cardShadowColor,
-                      blurRadius: 2,
-                      offset: const Offset(0, 1),
+                      color: isGlass
+                          ? const Color(0x2B182736)
+                          : tokens.cardShadowColor,
+                      blurRadius: isGlass ? 8 : 2,
+                      offset: Offset(0, isGlass ? 3 : 1),
                     ),
                   ],
                 ),
@@ -164,8 +176,8 @@ class _SegmentState extends State<_Segment> {
     final fg = !widget.enabled
         ? tokens.textSecondary.withValues(alpha: 0.5)
         : widget.selected
-        ? tokens.textPrimary
-        : tokens.textSecondary;
+            ? tokens.textPrimary
+            : tokens.textSecondary;
     final segment = MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),

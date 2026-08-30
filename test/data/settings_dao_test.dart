@@ -43,12 +43,12 @@ void main() {
     expect(await dao.get(kSettingThemeMode), kThemeModeLight);
   });
 
-  test('DSTokens 主题三态：毛玻璃冷静通透色板、深色亮度分层', () {
-    // 毛玻璃使用独立的冷蓝灰色板与统一强调色。
-    expect(DSTokens.glass.mainBackground, const Color(0xFFF3F6FA));
-    expect(DSTokens.glass.textPrimary, const Color(0xFF1B2430));
-    expect(DSTokens.glass.textSecondary, const Color(0xFF667487));
-    expect(DSTokens.glass.accentBlue, const Color(0xFF3F7FC4));
+  test('DSTokens 主题三态：Liquid Glass 光学色板、深色亮度分层', () {
+    // Liquid Glass 使用独立色板，clear/regular 材质保持较高透明度。
+    expect(DSTokens.glass.mainBackground, const Color(0xFFEDF3FA));
+    expect(DSTokens.glass.textPrimary, const Color(0xFF17202B));
+    expect(DSTokens.glass.textSecondary, const Color(0xFF59697D));
+    expect(DSTokens.glass.accentBlue, const Color(0xFF3D7EC5));
     expect(DSTokens.glass.successGreen, const Color(0xFF3C9B70));
     expect(DSTokens.glass.glassBlurSigma, greaterThan(0));
     expect(
@@ -56,7 +56,10 @@ void main() {
       greaterThan(DSTokens.glass.glassBlurSigma),
     );
     expect(DSTokens.glass.glassSurface, isNot(DSTokens.light.glassSurface));
-    expect(DSTokens.glass.glassSurface, DSTokens.glass.cardBackground);
+    expect(
+      DSTokens.glass.glassSurface.a,
+      lessThan(DSTokens.glass.cardBackground.a),
+    );
     expect(
       DSTokens.glass.dialogBackground.a,
       greaterThan(DSTokens.glass.glassSurface.a),
@@ -82,7 +85,7 @@ void main() {
     // 深色移除投影
     expect(DSTokens.dark.panelShadowColor, const Color(0x00000000));
     expect(DSTokens.dark.cardShadowColor, const Color(0x00000000));
-    // 毛玻璃材质只保留轻微反光渐变（左上高光 > 右下）。
+    // Liquid Glass 的镜面高光从左上向右下衰减。
     expect(
       DSTokens.glass.glassTintStart.a,
       greaterThan(DSTokens.glass.glassTintEnd.a),

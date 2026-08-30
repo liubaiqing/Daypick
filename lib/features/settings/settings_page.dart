@@ -368,7 +368,7 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '界面配色（毛玻璃为淡蓝灰、冷静通透的浮层质感）',
+                '界面配色（毛玻璃为 Apple Liquid Glass 动态折射质感）',
                 style: TextStyle(
                   fontSize: kFontSizeSmall,
                   color: tokens.textSecondary,

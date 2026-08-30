@@ -403,30 +403,35 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
                       // 发送按钮
                       GestureDetector(
                         onTap: _busy ? null : _send,
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _busy
-                                ? tokens.accentBlue.withValues(alpha: 0.5)
-                                : tokens.accentBlue,
+                        child: DSGlassSurface(
+                          kind: DSGlassSurfaceKind.floating,
+                          borderRadius: BorderRadius.circular(16),
+                          tint: tokens.accentBlue.withValues(
+                            alpha: _busy ? 0.38 : 0.72,
                           ),
-                          child: _busy
-                              ? const Padding(
-                                  padding: EdgeInsets.all(8),
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation(
-                                      Colors.white,
+                          fallbackColor: _busy
+                              ? tokens.accentBlue.withValues(alpha: 0.5)
+                              : tokens.accentBlue,
+                          fallbackShadow: false,
+                          child: SizedBox(
+                            width: 32,
+                            height: 32,
+                            child: _busy
+                                ? const Padding(
+                                    padding: EdgeInsets.all(8),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation(
+                                        Colors.white,
+                                      ),
                                     ),
+                                  )
+                                : const Icon(
+                                    Icons.arrow_upward,
+                                    size: 16,
+                                    color: Colors.white,
                                   ),
-                                )
-                              : const Icon(
-                                  Icons.arrow_upward,
-                                  size: 16,
-                                  color: Colors.white,
-                                ),
+                          ),
                         ),
                       ),
                     ],

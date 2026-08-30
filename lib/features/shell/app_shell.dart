@@ -14,6 +14,7 @@ import 'package:screen_retriever/screen_retriever.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../core/constants.dart';
+import '../../shared/design/ds_glass_surface.dart';
 import '../../shared/design/ds_tokens.dart';
 import '../../shared/design/dstokens_scope.dart';
 import '../calendar/calendar_page.dart';
@@ -63,8 +64,8 @@ class _AppShellState extends ConsumerState<AppShell> {
   Widget _buildBody(BuildContext context, bool isGlass) {
     final tokens = DSTokensScope.of(context);
     return ColoredBox(
-      // 轻微白色可读性蒙层：保留环境光晕，同时让日历文字始终清楚。
-      color: isGlass ? const Color(0x52FFFFFF) : tokens.mainBackground,
+      // Liquid Glass 需要可折射的环境色；仅覆盖轻白蒙层保证日历可读。
+      color: isGlass ? const Color(0x26FFFFFF) : tokens.mainBackground,
       child: Column(
         children: [
           const _TitleBar(),
@@ -90,8 +91,8 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 }
 
-/// 玻璃背后的应用内环境层。窗口仍保持不透明，避免依赖系统桌面合成；
-/// 两处低强度光晕只为浮层提供可感知的模糊与景深。
+/// Liquid Glass 背后的应用内环境层。蓝、紫、青环境光为透明浮层提供
+/// 可折射、可反射的真实色彩，同时保持窗口本身不透明。
 class _GlassAmbientBackground extends StatelessWidget {
   const _GlassAmbientBackground({required this.child});
 
@@ -108,9 +109,9 @@ class _GlassAmbientBackground extends StatelessWidget {
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: RadialGradient(
-                center: Alignment(-0.9, -0.9),
-                radius: 1.05,
-                colors: [Color(0xCCDCEBFA), Color(0x00DCEBFA)],
+                center: Alignment(-0.85, -0.95),
+                radius: 0.95,
+                colors: [Color(0xD9BFDDF9), Color(0x00BFDDF9)],
                 stops: [0, 1],
               ),
             ),
@@ -118,9 +119,19 @@ class _GlassAmbientBackground extends StatelessWidget {
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: RadialGradient(
-                center: Alignment(0.35, 1.05),
-                radius: 0.95,
-                colors: [Color(0xB3E7F0F6), Color(0x00E7F0F6)],
+                center: Alignment(0.95, -0.55),
+                radius: 0.85,
+                colors: [Color(0x8FD9D1F2), Color(0x00D9D1F2)],
+                stops: [0, 1],
+              ),
+            ),
+          ),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment(0.45, 1.05),
+                radius: 0.9,
+                colors: [Color(0xA8C8ECE8), Color(0x00C8ECE8)],
                 stops: [0, 1],
               ),
             ),
@@ -361,20 +372,26 @@ class _SettingsButtonState extends State<_SettingsButton> {
         onExit: (_) => setState(() => _hovered = false),
         child: GestureDetector(
           onTap: widget.onTap,
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: _hovered
-                  ? tokens.accentBlue.withValues(alpha: 0.14)
-                  : tokens.textPrimary.withValues(alpha: 0.05),
-              border: Border.all(color: tokens.divider),
-            ),
-            child: Icon(
-              Icons.settings_outlined,
-              size: 20,
-              color: _hovered ? tokens.accentBlue : tokens.textSecondary,
+          child: DSGlassSurface(
+            kind: DSGlassSurfaceKind.floating,
+            borderRadius: BorderRadius.circular(20),
+            fallbackColor: tokens.textPrimary.withValues(alpha: 0.05),
+            fallbackShadow: false,
+            child: AnimatedContainer(
+              duration: kDurationQuick,
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _hovered
+                    ? tokens.accentBlue.withValues(alpha: 0.12)
+                    : Colors.transparent,
+              ),
+              child: Icon(
+                Icons.settings_outlined,
+                size: 20,
+                color: _hovered ? tokens.accentBlue : tokens.textSecondary,
+              ),
             ),
           ),
         ),
