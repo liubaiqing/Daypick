@@ -18,7 +18,9 @@ import '../../data/db/providers.dart';
 import '../../data/llm/openai_compatible_client.dart';
 import '../../data/ocr/ocr_service.dart';
 import '../../data/parsers/ai_parser.dart';
-import '../../data/parsers/local_parser.dart';
+import '../../data/parsers/local_model_parser.dart';
+import '../../data/llm/ollama_client.dart';
+import '../../data/llm/local_image.dart';
 import '../../domain/parsed_event.dart';
 import '../../shared/design/ds_glass_surface.dart';
 import '../../shared/design/ds_segmented_control.dart';
@@ -58,7 +60,6 @@ class ChatComposerBar extends ConsumerStatefulWidget {
 class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
   final TextEditingController _textCtrl = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  final LocalParser _localParser = LocalParser();
   final OpenAiCompatibleClient _llmClient = OpenAiCompatibleClient();
   final OcrService _ocrService = OcrService();
 
@@ -69,6 +70,9 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
   String _mode = kParseModeLocal;
   bool _busy = false;
   String? _error;
+  String? _progress;
+  List<LocalInput>? _retryInputs;
+  String? _retryText;
 
   @override
   void initState() {
@@ -116,7 +120,7 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
         return;
       }
       final text = await Pasteboard.text;
-      if (text == null || text.isEmpty || !mounted) return;
+      if (text == null || text.isEmpty || !mounted || _busy) return;
       _insertText(text);
     } catch (e) {
       _showError('粘贴失败：$e');
@@ -152,7 +156,7 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
       for (final f in result?.files ?? const <PlatformFile>[])
         if (f.path != null) f.path!,
     ];
-    if (paths.isEmpty) return;
+    if (!mounted || _busy || paths.isEmpty) return;
     setState(() {
       _attachmentPaths.addAll(paths);
       _error = null;
@@ -160,6 +164,7 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
   }
 
   void _addDroppedFiles(List<String> paths) {
+    if (_busy) return;
     final images = <String>[
       for (final p in paths)
         if (_isImage(p)) p,
@@ -193,6 +198,7 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
   // ------------------------------------------------------------ 解析
 
   Future<void> _setMode(String mode) async {
+    if (_busy) return;
     setState(() => _mode = mode);
     // 持久化，下次启动沿用（文档 11 章）
     await ref.read(settingsDaoProvider).set(kSettingParseMode, mode);
@@ -210,6 +216,10 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
       _error = null;
     });
     try {
+      if (_mode == kParseModeLocal) {
+        await _sendLocal(text);
+        return;
+      }
       // 1. 附件 OCR + 文本合并（图文并存，OCR 文本与手输文本换行连接）
       final parts = <String>[];
       for (final path in _attachmentPaths) {
@@ -224,9 +234,7 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
       }
 
       // 2. 按当前模式解析
-      final events = _mode == kParseModeLocal
-          ? await _localParser.parse(combined)
-          : await _parseWithAi(combined);
+      final events = await _parseWithAi(combined);
 
       // 3. 清空输入并弹出结果面板
       if (!mounted) return;
@@ -245,6 +253,95 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
     } catch (e) {
       if (mounted) setState(() => _busy = false);
       _showError('解析失败：$e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _progress = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _sendLocal(String text) async {
+    final dao = ref.read(settingsDaoProvider);
+    final client = OllamaClient(
+      LocalModelConfig(
+        url: await dao.get(kSettingLocalUrl) ?? kDefaultLocalUrl,
+        model: await dao.get(kSettingLocalModel) ?? kDefaultLocalModel,
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _progress = '检查并启动本地模型…');
+    await client.check(autoStart: true);
+    if (!mounted) return;
+    final parser = LocalModelParser(client);
+    setState(() => _progress = '分配文字与图片…');
+    final oldPaths = _retryInputs
+        ?.where((i) => i.path != null)
+        .map((i) => i.path!)
+        .toList();
+    final samePaths =
+        oldPaths != null &&
+        oldPaths.length == _attachmentPaths.length &&
+        List.generate(
+          oldPaths.length,
+          (i) => oldPaths[i] == _attachmentPaths[i],
+        ).every((v) => v);
+    final inputs = _retryInputs != null && _retryText == text && samePaths
+        ? _retryInputs!
+        : await parser.prepare(text, List.of(_attachmentPaths));
+    final result = await runLocalBatch(
+      inputs,
+      (input) async {
+        final image = input.path == null
+            ? null
+            : await prepareLocalImage(input.path!);
+        return parser.parse(input, image: image);
+      },
+      progress: (done, total) {
+        if (mounted) setState(() => _progress = '本地解析 $done/$total（首次加载可能较慢）');
+      },
+    );
+    if (!mounted) return;
+    final failedPaths = result.failed
+        .where((i) => i.path != null)
+        .map((i) => i.path!)
+        .toList();
+    final remainingText = <String>[];
+    var imageIndex = 0;
+    for (final input in result.failed) {
+      if (input.path != null) {
+        imageIndex++;
+        if (input.text.isNotEmpty) {
+          remainingText.add('第$imageIndex张图片补充：${input.text}');
+        }
+      } else {
+        remainingText.add(input.text);
+      }
+    }
+    // 全部失败保持原输入；缓存已分配任务，避免重试时再次分配文字。
+    final allFailed = result.failed.length == inputs.length;
+    final residual = allFailed ? text : remainingText.join('\n');
+    for (final path in _pasteTempFiles.toList()) {
+      if (!failedPaths.contains(path)) {
+        _pasteTempFiles.remove(path);
+        File(path).delete().ignore();
+      }
+    }
+    setState(() {
+      _busy = false;
+      _progress = null;
+      _retryInputs = result.failed.isEmpty ? null : result.failed;
+      _retryText = residual;
+      _textCtrl.text = residual;
+      _attachmentPaths
+        ..clear()
+        ..addAll(failedPaths);
+      _error = result.errors.isEmpty ? null : result.errors.join('\n');
+    });
+    if (result.events.isNotEmpty) {
+      await showParseResultPanel(context, result.events);
     }
   }
 
@@ -294,6 +391,22 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (_progress != null)
+            Text(
+              _progress!,
+              style: TextStyle(
+                fontSize: kFontSizeSmall,
+                color: tokens.textSecondary,
+              ),
+            ),
+          if (_attachmentPaths.any((p) => p.toLowerCase().endsWith('.gif')))
+            Text(
+              'GIF 仅处理首帧',
+              style: TextStyle(
+                fontSize: kFontSizeSmall,
+                color: tokens.textSecondary,
+              ),
+            ),
           if (_error != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 6, left: 8),
@@ -328,8 +441,9 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
                             _AttachmentThumb(
                               key: ValueKey('attachment-$i'),
                               path: _attachmentPaths[i],
-                              onRemove:
-                                  _busy ? null : () => _removeAttachment(i),
+                              onRemove: _busy
+                                  ? null
+                                  : () => _removeAttachment(i),
                             ),
                         ],
                       ),
@@ -390,9 +504,13 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
                       const SizedBox(width: 8),
                       // 解析模式小分段控件（滑块平滑滑动，受动画开关控制）
                       DSSegmentedControl(
-                        options: const [
-                          (label: '本地', enabled: true, tooltip: null),
-                          (label: 'AI', enabled: true, tooltip: null),
+                        options: [
+                          (
+                            label: '本地',
+                            enabled: !_busy,
+                            tooltip: '本机 Qwen 图文解析',
+                          ),
+                          (label: 'AI', enabled: !_busy, tooltip: '在线服务'),
                         ],
                         selectedIndex: _mode == kParseModeAi ? 1 : 0,
                         duration: animOn ? kDurationNormal : Duration.zero,
@@ -511,11 +629,7 @@ class _SendActionButtonState extends State<_SendActionButton> {
                         valueColor: AlwaysStoppedAnimation(iconColor),
                       ),
                     )
-                  : Icon(
-                      Icons.arrow_upward,
-                      size: 16,
-                      color: iconColor,
-                    ),
+                  : Icon(Icons.arrow_upward, size: 16, color: iconColor),
             ),
           ),
         ),

@@ -1,5 +1,5 @@
-/// 解析器策略接口（文档 3.3 节）：LocalParser（离线）与 AiParser（在线）
-/// 实现同一接口，输出统一的 ParsedEvent 草稿，进入同一条确认流程。
+/// 在线文本解析接口；本地多模态入口为 LocalModelParser。
+/// 两种入口输出统一的 ParsedEvent 草稿，进入同一条确认流程。
 library;
 
 import '../../core/errors.dart';

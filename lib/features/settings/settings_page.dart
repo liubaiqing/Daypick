@@ -13,6 +13,7 @@ import '../../data/db/providers.dart';
 import '../../data/export/backup_service.dart';
 import '../../data/export/ics_exporter.dart';
 import '../../data/llm/openai_compatible_client.dart';
+import '../../data/llm/ollama_client.dart';
 import '../../domain/llm_providers.dart';
 import '../../shared/design/ds_button.dart';
 import '../../shared/design/ds_dropdown.dart';
@@ -28,7 +29,8 @@ import '../calendar/trash_dialog.dart';
 /// 弹出设置小窗（左下角圆形按钮触发）
 Future<void> showSettingsDialog(BuildContext context) {
   final tokens = DSTokensScope.of(context);
-  final animOn = ProviderScope.containerOf(
+  final animOn =
+      ProviderScope.containerOf(
         context,
         listen: false,
       ).read(animationsEnabledProvider).value ??
@@ -155,6 +157,10 @@ class SettingsDialogBody extends ConsumerStatefulWidget {
 }
 
 class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
+  final _localUrlCtrl = TextEditingController();
+  final _localModelCtrl = TextEditingController();
+  bool _localTesting = false;
+  String? _localResult;
   final TextEditingController _baseUrlCtrl = TextEditingController();
   final TextEditingController _apiKeyCtrl = TextEditingController();
   final TextEditingController _modelCtrl = TextEditingController();
@@ -177,6 +183,8 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
 
   @override
   void dispose() {
+    _localUrlCtrl.dispose();
+    _localModelCtrl.dispose();
     _baseUrlCtrl.dispose();
     _apiKeyCtrl.dispose();
     _modelCtrl.dispose();
@@ -185,6 +193,8 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
 
   Future<void> _load() async {
     final dao = ref.read(settingsDaoProvider);
+    final localUrl = await dao.get(kSettingLocalUrl) ?? kDefaultLocalUrl;
+    final localModel = await dao.get(kSettingLocalModel) ?? kDefaultLocalModel;
     final base = await dao.get(kSettingLlmBaseUrl) ?? kDefaultLlmBaseUrl;
     final key = await dao.get(kSettingLlmApiKey) ?? '';
     final model = await dao.get(kSettingLlmModel) ?? kDefaultLlmModel;
@@ -193,6 +203,8 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
     if (!mounted) return;
     setState(() {
       _baseUrlCtrl.text = base;
+      _localUrlCtrl.text = localUrl;
+      _localModelCtrl.text = localModel;
       _apiKeyCtrl.text = key;
       _modelCtrl.text = model;
       _animationsEnabled = anims != '0';
@@ -225,6 +237,42 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(const SnackBar(content: Text('设置已保存')));
+  }
+
+  Future<void> _saveLocal() async {
+    try {
+      final config = LocalModelConfig(
+        url: _localUrlCtrl.text.trim(),
+        model: _localModelCtrl.text.trim(),
+      );
+      final url = config.endpoint.toString();
+      final dao = ref.read(settingsDaoProvider);
+      await dao.set(kSettingLocalUrl, url);
+      await dao.set(kSettingLocalModel, config.model);
+      if (mounted) setState(() => _localResult = '本地设置已保存');
+    } catch (e) {
+      if (mounted) setState(() => _localResult = e.toString());
+    }
+  }
+
+  Future<void> _checkLocal() async {
+    setState(() {
+      _localTesting = true;
+      _localResult = null;
+    });
+    try {
+      await OllamaClient(
+        LocalModelConfig(
+          url: _localUrlCtrl.text,
+          model: _localModelCtrl.text.trim(),
+        ),
+      ).check();
+      if (mounted) setState(() => _localResult = '服务可用，模型支持图文；实际解析请从输入条验证');
+    } catch (e) {
+      if (mounted) setState(() => _localResult = e.toString());
+    } finally {
+      if (mounted) setState(() => _localTesting = false);
+    }
   }
 
   Future<void> _testConnection() async {
@@ -282,8 +330,8 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
       allowedExtensions: ['json'],
     );
     if (path == null) return;
-    final content =
-        await BackupService(ref.read(eventDaoProvider)).exportJson();
+    final content = await BackupService(ref.read(eventDaoProvider))
+        .exportJson();
     await File(path).writeAsString(content);
     if (!mounted) return;
     ScaffoldMessenger.of(context)
@@ -300,8 +348,8 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
     setState(() => _dataBusy = true);
     try {
       final content = await File(path).readAsString();
-      final summary =
-          await BackupService(ref.read(eventDaoProvider)).restoreJson(content);
+      final summary = await BackupService(ref.read(eventDaoProvider))
+          .restoreJson(content);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -408,6 +456,49 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
         ),
         SizedBox(height: sectionGap),
 
+        _SettingsSection(
+          surfaceKey: const ValueKey('settings-section-local'),
+          title: '本地模型（Ollama）',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DSTextField(
+                key: const ValueKey('local-url'),
+                controller: _localUrlCtrl,
+                hintText: '本机地址，例如 http://127.0.0.1:11434',
+              ),
+              const SizedBox(height: 10),
+              DSTextField(
+                key: const ValueKey('local-model'),
+                controller: _localModelCtrl,
+                hintText: '模型名，例如 qwen3.5:4b',
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  DSButton(
+                    label: _localTesting ? '检查中…' : '检查本地模型',
+                    kind: DSButtonKind.secondary,
+                    onPressed: _localTesting ? null : _checkLocal,
+                  ),
+                  const Spacer(),
+                  DSButton(label: '保存本地设置', onPressed: _saveLocal),
+                ],
+              ),
+              if (_localResult != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _localResult!,
+                  style: TextStyle(
+                    fontSize: kFontSizeSmall,
+                    color: tokens.textSecondary,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        SizedBox(height: sectionGap),
         // ---- AI 服务 ----
         _SettingsSection(
           surfaceKey: const ValueKey('settings-section-ai'),

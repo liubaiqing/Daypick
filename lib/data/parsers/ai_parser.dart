@@ -1,5 +1,5 @@
 /// AI 解析引擎（文档 6 章）：OpenAI 兼容 + JSON Schema 结构化输出，
-/// 输出与 LocalParser 统一为 ParsedEvent，共用确认流程。
+/// 输出与本地模型统一为 ParsedEvent，共用确认流程。
 library;
 
 import '../../core/errors.dart';
@@ -25,7 +25,7 @@ class AiParser implements EventParser {
   final LlmGateway client;
   final AiConfig config;
 
-  /// 可注入时钟便于测试（与 LocalParser 一致）
+  /// 可注入时钟便于测试。
   final DateTime Function() _now;
 
   AiParser({required this.client, required this.config, DateTime Function()? now})

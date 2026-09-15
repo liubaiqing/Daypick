@@ -60,7 +60,9 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
   late final TextEditingController _noteCtrl;
   late final TextEditingController _startCtrl;
   late final TextEditingController _endCtrl;
-  late DateTime _date;
+  DateTime? _date;
+  DateTime? _endDate;
+  String? _dateError;
   late bool _allDay;
   String? _titleError;
   String? _startError;
@@ -71,19 +73,16 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
   void initState() {
     super.initState();
     final e = widget.entry.event;
-    _date = e.start == null
-        ? DateUtils.dateOnly(DateTime.now())
-        : DateUtils.dateOnly(e.start!);
+    _date = e.start == null ? null : DateUtils.dateOnly(e.start!);
+    _endDate = e.end == null ? null : DateUtils.dateOnly(e.end!);
     _allDay = e.allDay;
     _titleCtrl = TextEditingController(text: e.title);
     _locationCtrl = TextEditingController(text: e.location ?? '');
     _noteCtrl = TextEditingController(text: e.note ?? '');
     _startCtrl = TextEditingController(
-      text: e.start == null || e.allDay ? '09:00' : _fmt(e.start!),
+      text: e.start == null || e.allDay ? '' : _fmt(e.start!),
     );
-    _endCtrl = TextEditingController(
-      text: e.end == null ? '10:00' : _fmt(e.end!),
-    );
+    _endCtrl = TextEditingController(text: e.end == null ? '' : _fmt(e.end!));
   }
 
   @override
@@ -99,13 +98,15 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
   static String _fmt(DateTime d) =>
       '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
-  DateTime? _parseTime(String text) {
+  DateTime? _parseTime(String text, {bool end = false}) {
+    final date = end ? _endDate ?? _date : _date;
+    if (date == null) return null;
     final m = _timeRe.firstMatch(text.trim());
     if (m == null) return null;
     return DateTime(
-      _date.year,
-      _date.month,
-      _date.day,
+      date.year,
+      date.month,
+      date.day,
       int.parse(m.group(1)!),
       int.parse(m.group(2)!),
     );
@@ -114,24 +115,29 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
   bool _validate() {
     setState(() {
       _titleError = _titleCtrl.text.trim().isEmpty ? '请填写标题' : null;
+      _dateError = _date == null ? '请选择日期' : null;
       _startError = null;
       _endError = null;
       if (!_allDay) {
         if (!_timeRe.hasMatch(_startCtrl.text.trim())) {
           _startError = '格式如 09:00';
         }
-        if (!_timeRe.hasMatch(_endCtrl.text.trim())) {
+        if (_endCtrl.text.trim().isNotEmpty &&
+            !_timeRe.hasMatch(_endCtrl.text.trim())) {
           _endError = '格式如 10:00';
         } else {
           final s = _parseTime(_startCtrl.text.trim());
-          final t = _parseTime(_endCtrl.text.trim());
+          final t = _parseTime(_endCtrl.text.trim(), end: true);
           if (s != null && t != null && t.isBefore(s)) {
             _endError = '结束需不早于开始';
           }
         }
       }
     });
-    return _titleError == null && _startError == null && _endError == null;
+    return _titleError == null &&
+        _dateError == null &&
+        _startError == null &&
+        _endError == null;
   }
 
   /// 保存草稿入库（确认流的唯一写库路径）；成功返回 true
@@ -143,23 +149,25 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
     final location = _locationCtrl.text.trim();
     final note = _noteCtrl.text.trim();
     final start = _allDay
-        ? DateTime(_date.year, _date.month, _date.day)
+        ? DateTime(_date!.year, _date!.month, _date!.day)
         : _parseTime(_startCtrl.text.trim());
     if (start == null) return false;
-    final end = _allDay ? null : _parseTime(_endCtrl.text.trim());
+    final end = _allDay ? null : _parseTime(_endCtrl.text.trim(), end: true);
     final source = widget.entry.event;
     setState(() => _saving = true);
     try {
-      final id = await dao.insertEvent(EventsCompanion(
-        title: Value(title),
-        location: Value(location.isEmpty ? null : location),
-        start: Value(start),
-        end: Value(end),
-        allDay: Value(_allDay),
-        note: Value(note.isEmpty ? null : note),
-        sourceType: Value(source.sourceType),
-        sourceText: Value(source.sourceText),
-      ));
+      final id = await dao.insertEvent(
+        EventsCompanion(
+          title: Value(title),
+          location: Value(location.isEmpty ? null : location),
+          start: Value(start),
+          end: Value(end),
+          allDay: Value(_allDay),
+          note: Value(note.isEmpty ? null : note),
+          sourceType: Value(source.sourceType),
+          sourceText: Value(source.sourceText),
+        ),
+      );
       if (!mounted) return true;
       setState(() {
         _saving = false;
@@ -171,9 +179,8 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('保存失败：$e')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('保存失败：$e')));
       }
       return false;
     }
@@ -214,8 +221,19 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDSDatePicker(context, initial: _date);
+    final picked = await showDSDatePicker(
+      context,
+      initial: _date ?? DateTime.now(),
+    );
     if (picked != null) setState(() => _date = picked);
+  }
+
+  Future<void> _pickEndDate() async {
+    final picked = await showDSDatePicker(
+      context,
+      initial: _endDate ?? _date ?? DateTime.now(),
+    );
+    if (picked != null) setState(() => _endDate = picked);
   }
 
   @override
@@ -233,7 +251,9 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
             : tokens.cardBackground,
         borderRadius: BorderRadius.circular(kRadiusCard),
         border: Border.all(
-          color: saved ? tokens.successGreen.withValues(alpha: 0.4) : tokens.divider,
+          color: saved
+              ? tokens.successGreen.withValues(alpha: 0.4)
+              : tokens.divider,
         ),
         boxShadow: [
           BoxShadow(
@@ -265,10 +285,7 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
               runSpacing: 4,
               children: [
                 if (e.lowConfidence)
-                  _Badge(
-                    label: '建议人工核对',
-                    color: tokens.warningOrange,
-                  ),
+                  _Badge(label: '建议人工核对', color: tokens.warningOrange),
                 if (e.isPastDate(DateTime.now()))
                   _Badge(label: '日期已过', color: tokens.textSecondary),
               ],
@@ -288,7 +305,7 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
                   onTap: saved ? null : _pickDate,
                   child: _DateField(
                     date: _date,
-                    highlight: e.hasMissingTime && !saved,
+                    highlight: _date == null && !saved,
                   ),
                 ),
               ),
@@ -335,7 +352,31 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
                 ),
               ],
             ),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: saved ? null : _pickEndDate,
+              child: Row(
+                children: [
+                  Text(
+                    '结束日期（结束时间可留空）',
+                    style: TextStyle(
+                      fontSize: kFontSizeSmall,
+                      color: tokens.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _DateField(
+                      date: _endDate ?? _date,
+                      highlight: false,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
+          if (_dateError != null)
+            Text(_dateError!, style: TextStyle(color: tokens.dangerRed)),
           const SizedBox(height: 10),
           DSTextField(controller: _locationCtrl, hintText: '地点（可选）'),
           const SizedBox(height: 10),
@@ -415,7 +456,7 @@ class _Badge extends StatelessWidget {
 class _DateField extends StatelessWidget {
   const _DateField({required this.date, required this.highlight});
 
-  final DateTime date;
+  final DateTime? date;
   final bool highlight;
 
   @override
@@ -439,8 +480,13 @@ class _DateField extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            '${date.year}年${date.month}月${date.day}日',
-            style: TextStyle(fontSize: kFontSizeBody, color: tokens.textPrimary),
+            date == null
+                ? '请选择日期'
+                : '${date!.year}年${date!.month}月${date!.day}日',
+            style: TextStyle(
+              fontSize: kFontSizeBody,
+              color: tokens.textPrimary,
+            ),
           ),
         ],
       ),

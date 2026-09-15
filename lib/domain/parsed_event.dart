@@ -35,7 +35,7 @@ class ParsedEvent {
 
   final String? note;
 
-  /// 来源：文本解析 / 图片 OCR / 手动
+  /// 来源：文本解析 / 图片（视觉或 OCR）/ 手动
   final EventSourceType sourceType;
 
   /// 该草稿对应的原始文本（确认入库时记入 sourceText）
@@ -44,7 +44,7 @@ class ParsedEvent {
   /// 缺失字段警告集
   final Set<MissingField> missing;
 
-  /// 置信度 0.0~1.0（本地模式按规则命中打分；<0.5 视为低置信，文档 5.6 节）
+  /// 兼容旧草稿的核对提示阈值；本地模型统一为 0，要求人工核对，不代表概率。
   final double confidence;
 
   bool get hasMissingTime => missing.contains(MissingField.time);
