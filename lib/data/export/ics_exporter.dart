@@ -32,12 +32,17 @@ class IcsExporter {
   }
 
   List<String> _buildEvent(Event e) {
+    // 仅截止时间是待办的 DUE，不伪造 DTSTART。部分日历客户端需导入至任务列表。
+    final deadlineOnly = !e.allDay && !e.hasStartTime && e.end != null;
+    final component = deadlineOnly ? 'VTODO' : 'VEVENT';
     final lines = <String>[
-      'BEGIN:VEVENT',
+      'BEGIN:$component',
       'UID:${e.id}@calendar.local',
       'DTSTAMP:${_formatUtc(DateTime.now())}',
     ];
-    if (e.allDay) {
+    if (deadlineOnly) {
+      lines.add('DUE;TZID=$_tzid:${_formatLocal(e.end!)}');
+    } else if (e.allDay || !e.hasStartTime) {
       lines.add('DTSTART;VALUE=DATE:${_formatDate(e.start)}');
     } else {
       lines.add('DTSTART;TZID=$_tzid:${_formatLocal(e.start)}');
@@ -52,7 +57,7 @@ class IcsExporter {
     if (e.note != null && e.note!.isNotEmpty) {
       lines.add('DESCRIPTION:${_escape(e.note!)}');
     }
-    lines.add('END:VEVENT');
+    lines.add('END:$component');
     return lines;
   }
 

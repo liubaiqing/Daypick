@@ -13,6 +13,7 @@ void main() {
     DateTime? start,
     DateTime? end,
     bool allDay = false,
+    bool hasStartTime = true,
     String? location,
     String? note,
   }) {
@@ -22,6 +23,7 @@ void main() {
       title: title,
       location: location,
       start: s,
+      hasStartTime: hasStartTime,
       end: end,
       allDay: allDay,
       note: note,
@@ -32,10 +34,23 @@ void main() {
     );
   }
 
-  test('基础结构：VCALENDAR/VTIMEZONE/VEVENT，CRLF 行尾', () {
+  test('仅截止时间使用VTODO DUE，不伪造开始时间', () {
     final content = exporter.build([
-      makeEvent(id: 1, title: '开会'),
+      makeEvent(
+        id: 8,
+        title: '奖学金申报',
+        start: DateTime(2026, 9, 19),
+        end: DateTime(2026, 9, 19, 20),
+        hasStartTime: false,
+      ),
     ]);
+    final task = content.split('BEGIN:VTODO').last;
+    expect(task, contains('DUE;TZID=Asia/Shanghai:20260919T200000'));
+    expect(task, isNot(contains('DTSTART')));
+    expect(task, isNot(contains('DTEND')));
+  });
+  test('基础结构：VCALENDAR/VTIMEZONE/VEVENT，CRLF 行尾', () {
+    final content = exporter.build([makeEvent(id: 1, title: '开会')]);
     expect(content.startsWith('BEGIN:VCALENDAR\r\n'), isTrue);
     expect(content, contains('PRODID:-//calendar//CN'));
     expect(content, contains('BEGIN:VTIMEZONE'));
@@ -63,7 +78,12 @@ void main() {
 
   test('全天事件：VALUE=DATE 且无 DTEND', () {
     final content = exporter.build([
-      makeEvent(id: 3, title: '生日', start: DateTime(2026, 12, 25), allDay: true),
+      makeEvent(
+        id: 3,
+        title: '生日',
+        start: DateTime(2026, 12, 25),
+        allDay: true,
+      ),
     ]);
     expect(content, contains('DTSTART;VALUE=DATE:20261225'));
     expect(content.contains('DTEND'), isFalse);
@@ -79,11 +99,7 @@ void main() {
 
   test('文本转义：逗号/分号/反斜杠/换行', () {
     final content = exporter.build([
-      makeEvent(
-        id: 5,
-        title: '开会,讨论;方案\\A\nB',
-        location: '公司;3楼,会议室',
-      ),
+      makeEvent(id: 5, title: '开会,讨论;方案\\A\nB', location: '公司;3楼,会议室'),
     ]);
     expect(content, contains('SUMMARY:开会\\,讨论\\;方案\\\\A\\nB'));
     expect(content, contains('LOCATION:公司\\;3楼\\,会议室'));

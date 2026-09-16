@@ -108,7 +108,7 @@ void main() {
         expect(
           result.events
               .where((e) => e.sourceText.startsWith('图片 1'))
-              .map((e) => e.start),
+              .map((e) => e.start ?? e.end),
           containsAll([DateTime(2026, 9, 18, 17), DateTime(2026, 9, 20, 9)]),
         );
         expect(

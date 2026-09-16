@@ -3,6 +3,8 @@
 /// 入口：设置 → 数据管理 → "回收站"。
 library;
 
+import '../../domain/event_time.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -17,7 +19,8 @@ import '../../shared/design/dstokens_scope.dart';
 /// 弹出回收站窗口；返回 true 表示发生任何变更（恢复/清理）。
 Future<bool?> showTrashDialog(BuildContext context) {
   final tokens = DSTokensScope.of(context);
-  final animOn = ProviderScope.containerOf(
+  final animOn =
+      ProviderScope.containerOf(
         context,
         listen: false,
       ).read(animationsEnabledProvider).value ??
@@ -235,8 +238,7 @@ class _TrashRowState extends State<_TrashRow> {
   Widget build(BuildContext context) {
     final tokens = DSTokensScope.of(context);
     final e = widget.event;
-    final time =
-        e.allDay ? '全天' : '${_two(e.start.hour)}:${_two(e.start.minute)}';
+    final time = e.timeLabel;
     final deletedAt = e.deletedAt;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),

@@ -15,7 +15,7 @@ class BackupService {
 
   final EventDao _dao;
 
-  static const int _schemaVersion = 1;
+  static const int _schemaVersion = 2;
   static const String _appTag = 'calendar';
 
   /// 导出全量事件为 JSON 字符串
@@ -32,6 +32,7 @@ class BackupService {
             'title': e.title,
             'location': e.location,
             'start': e.start.toIso8601String(),
+            'has_start_time': e.hasStartTime,
             'end': e.end?.toIso8601String(),
             'all_day': e.allDay,
             'note': e.note,
@@ -99,18 +100,13 @@ class BackupService {
         restored++;
         continue;
       }
-      await _dao.insertEvent(
-        _companionFromRaw(raw, id),
-      );
+      await _dao.insertEvent(_companionFromRaw(raw, id));
       restored++;
     }
     return (restored: restored, skipped: skipped);
   }
 
-  static EventsCompanion _companionFromRaw(
-    Map<String, dynamic> raw,
-    int id,
-  ) {
+  static EventsCompanion _companionFromRaw(Map<String, dynamic> raw, int id) {
     final endStr = raw['end'] as String?;
     final location = (raw['location'] as String?)?.trim();
     final note = (raw['note'] as String?)?.trim();
@@ -119,7 +115,10 @@ class BackupService {
       id: Value(id),
       title: Value((raw['title'] as String?)?.trim() ?? ''),
       location: Value((location == null || location.isEmpty) ? null : location),
-      start: Value(DateTime.tryParse(raw['start'] as String? ?? '') ?? DateTime.now()),
+      start: Value(
+        DateTime.tryParse(raw['start'] as String? ?? '') ?? DateTime.now(),
+      ),
+      hasStartTime: Value(raw['has_start_time'] != false),
       end: Value(endStr == null ? null : DateTime.tryParse(endStr)),
       allDay: Value(raw['all_day'] == true),
       note: Value((note == null || note.isEmpty) ? null : note),

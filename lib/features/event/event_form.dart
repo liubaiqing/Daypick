@@ -9,6 +9,7 @@ import 'package:drift/drift.dart' hide Column, Table;
 import '../../data/db/database.dart';
 import '../../data/db/providers.dart';
 import '../../domain/event_source_type.dart';
+import '../../domain/clock_input.dart';
 import '../../shared/design/ds_button.dart';
 import '../../shared/design/ds_date_picker.dart';
 import '../../shared/design/ds_dialog.dart';
@@ -41,14 +42,13 @@ class _EventFormBody extends ConsumerStatefulWidget {
 }
 
 class _EventFormBodyState extends ConsumerState<_EventFormBody> {
-  static final RegExp _timeRe = RegExp(r'^([01]?\d|2[0-3]):([0-5]\d)$');
-
   late final TextEditingController _titleCtrl;
   late final TextEditingController _locationCtrl;
   late final TextEditingController _noteCtrl;
   late final TextEditingController _startCtrl;
   late final TextEditingController _endCtrl;
   late DateTime _date;
+  DateTime? _endDate;
   late bool _allDay;
   String? _titleError;
   String? _startError;
@@ -58,17 +58,20 @@ class _EventFormBodyState extends ConsumerState<_EventFormBody> {
   void initState() {
     super.initState();
     final e = widget.existing;
-    final base = e != null ? DateUtils.dateOnly(e.start) : DateUtils.dateOnly(widget.initialDate ?? DateTime.now());
+    final base = e != null
+        ? DateUtils.dateOnly(e.start)
+        : DateUtils.dateOnly(widget.initialDate ?? DateTime.now());
     _date = base;
+    _endDate = e?.end == null ? null : DateUtils.dateOnly(e!.end!);
     _allDay = e?.allDay ?? false;
     _titleCtrl = TextEditingController(text: e?.title ?? '');
     _locationCtrl = TextEditingController(text: e?.location ?? '');
     _noteCtrl = TextEditingController(text: e?.note ?? '');
     _startCtrl = TextEditingController(
-      text: e != null && !e.allDay ? _fmt(e.start) : '09:00',
+      text: e != null && !e.allDay && e.hasStartTime ? _fmt(e.start) : '',
     );
     _endCtrl = TextEditingController(
-      text: e != null && !e.allDay && e.end != null ? _fmt(e.end!) : '10:00',
+      text: e != null && !e.allDay && e.end != null ? _fmt(e.end!) : '',
     );
   }
 
@@ -87,18 +90,22 @@ class _EventFormBodyState extends ConsumerState<_EventFormBody> {
 
   Future<void> _pickDate() async {
     final picked = await showDSDatePicker(context, initial: _date);
-    if (picked != null) setState(() => _date = picked);
+    if (picked != null) {
+      setState(() {
+        if (_endDate != null && DateUtils.isSameDay(_endDate, _date)) {
+          _endDate = picked;
+        }
+        _date = picked;
+      });
+    }
   }
 
-  DateTime _parseTime(String text) {
-    final m = _timeRe.firstMatch(text)!;
-    return DateTime(
-      _date.year,
-      _date.month,
-      _date.day,
-      int.parse(m.group(1)!),
-      int.parse(m.group(2)!),
-    );
+  DateTime? _parseTime(String text, {bool end = false}) =>
+      ClockInput.parse(text)?.on(end ? _endDate ?? _date : _date);
+
+  Future<void> _pickEndDate() async {
+    final picked = await showDSDatePicker(context, initial: _endDate ?? _date);
+    if (picked != null) setState(() => _endDate = picked);
   }
 
   bool _validate() {
@@ -107,15 +114,17 @@ class _EventFormBodyState extends ConsumerState<_EventFormBody> {
       _startError = null;
       _endError = null;
       if (!_allDay) {
-        if (!_timeRe.hasMatch(_startCtrl.text.trim())) {
-          _startError = '格式如 09:00';
+        if (_startCtrl.text.trim().isNotEmpty &&
+            ClockInput.parse(_startCtrl.text) == null) {
+          _startError = '请输入0–23点，如9、9.05、09:05';
         }
-        if (!_timeRe.hasMatch(_endCtrl.text.trim())) {
-          _endError = '格式如 10:00';
-        } else if (_timeRe.hasMatch(_startCtrl.text.trim())) {
+        if (_endCtrl.text.trim().isNotEmpty &&
+            ClockInput.parse(_endCtrl.text) == null) {
+          _endError = '请输入0–23点，如20、20.30';
+        } else {
           final s = _parseTime(_startCtrl.text.trim());
-          final t = _parseTime(_endCtrl.text.trim());
-          if (t.isBefore(s)) _endError = '结束需不早于开始';
+          final t = _parseTime(_endCtrl.text.trim(), end: true);
+          if (s != null && t != null && t.isBefore(s)) _endError = '结束需不早于开始';
         }
       }
     });
@@ -128,41 +137,50 @@ class _EventFormBodyState extends ConsumerState<_EventFormBody> {
     final title = _titleCtrl.text.trim();
     final location = _locationCtrl.text.trim();
     final note = _noteCtrl.text.trim();
-    final start = _allDay
+    final allDay =
+        _allDay ||
+        (_startCtrl.text.trim().isEmpty && _endCtrl.text.trim().isEmpty);
+    final specifiedStart = !allDay && _startCtrl.text.trim().isNotEmpty;
+    final start = !specifiedStart
         ? DateTime(_date.year, _date.month, _date.day)
-        : _parseTime(_startCtrl.text.trim());
-    final end = _allDay ? null : _parseTime(_endCtrl.text.trim());
+        : _parseTime(_startCtrl.text.trim())!;
+    final end = allDay ? null : _parseTime(_endCtrl.text.trim(), end: true);
     final existing = widget.existing;
     try {
       if (existing == null) {
-        await dao.insertEvent(EventsCompanion(
-          title: Value(title),
-          location: Value(location.isEmpty ? null : location),
-          start: Value(start),
-          end: Value(end),
-          allDay: Value(_allDay),
-          note: Value(note.isEmpty ? null : note),
-          sourceType: Value(EventSourceType.manual),
-          sourceText: const Value(null),
-        ));
+        await dao.insertEvent(
+          EventsCompanion(
+            title: Value(title),
+            location: Value(location.isEmpty ? null : location),
+            start: Value(start),
+            hasStartTime: Value(specifiedStart),
+            end: Value(end),
+            allDay: Value(allDay),
+            note: Value(note.isEmpty ? null : note),
+            sourceType: Value(EventSourceType.manual),
+            sourceText: const Value(null),
+          ),
+        );
       } else {
-        await dao.replaceEvent(existing.copyWith(
-          title: title,
-          location: Value(location.isEmpty ? null : location),
-          start: start,
-          end: Value(end),
-          allDay: _allDay,
-          note: Value(note.isEmpty ? null : note),
-          updatedAt: DateTime.now(),
-        ));
+        await dao.replaceEvent(
+          existing.copyWith(
+            title: title,
+            location: Value(location.isEmpty ? null : location),
+            start: start,
+            hasStartTime: specifiedStart,
+            end: Value(end),
+            allDay: allDay,
+            note: Value(note.isEmpty ? null : note),
+            updatedAt: DateTime.now(),
+          ),
+        );
       }
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
         // 保存失败：表单内容保留，提示后重试（文档 14 章）
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('保存失败：$e')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('保存失败：$e')));
       }
     }
   }
@@ -189,8 +207,7 @@ class _EventFormBodyState extends ConsumerState<_EventFormBody> {
                   onTap: _pickDate,
                   child: _ReadonlyField(
                     label: '日期',
-                    value:
-                        '${_date.year}年${_date.month}月${_date.day}日',
+                    value: '${_date.year}年${_date.month}月${_date.day}日',
                   ),
                 ),
               ),
@@ -222,7 +239,7 @@ class _EventFormBodyState extends ConsumerState<_EventFormBody> {
                 Expanded(
                   child: DSTextField(
                     controller: _startCtrl,
-                    hintText: '开始 09:00',
+                    hintText: '开始（可空，如9、9.05）',
                     errorText: _startError,
                   ),
                 ),
@@ -230,11 +247,22 @@ class _EventFormBodyState extends ConsumerState<_EventFormBody> {
                 Expanded(
                   child: DSTextField(
                     controller: _endCtrl,
-                    hintText: '结束 10:00',
+                    hintText: '结束／截止（可空，如20）',
                     errorText: _endError,
                   ),
                 ),
               ],
+            ),
+          ],
+          if (!_allDay) ...[
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: _pickEndDate,
+              child: _ReadonlyField(
+                label: '结束日期',
+                value:
+                    '${(_endDate ?? _date).year}年${(_endDate ?? _date).month}月${(_endDate ?? _date).day}日',
+              ),
             ),
           ],
           const SizedBox(height: 12),
@@ -280,13 +308,23 @@ class _ReadonlyField extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.calendar_today_outlined, size: 13, color: tokens.accentBlue),
-          const SizedBox(width: 6),
-          Text(
-            value,
-            style: TextStyle(fontSize: kFontSizeBody, color: tokens.textPrimary),
+          Icon(
+            Icons.calendar_today_outlined,
+            size: 13,
+            color: tokens.accentBlue,
           ),
-          const Spacer(),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              value,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: kFontSizeBody,
+                color: tokens.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
           Text(
             label,
             style: TextStyle(
@@ -318,7 +356,9 @@ class _DSSwitch extends StatelessWidget {
         height: 20,
         padding: const EdgeInsets.all(2),
         decoration: BoxDecoration(
-          color: value ? tokens.successGreen : tokens.textSecondary.withValues(alpha: 0.35),
+          color: value
+              ? tokens.successGreen
+              : tokens.textSecondary.withValues(alpha: 0.35),
           borderRadius: BorderRadius.circular(10),
         ),
         child: AnimatedAlign(

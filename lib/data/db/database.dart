@@ -22,18 +22,21 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) => m.createAll(),
-        onUpgrade: (m, from, to) async {
-          // v1 → v2：回收站软删除字段（文档 4.4 节，老数据全部为 null）
-          if (from < 2) {
-            await m.addColumn(events, events.deletedAt);
-          }
-        },
-      );
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      // v1 → v2：回收站软删除字段（文档 4.4 节，老数据全部为 null）
+      if (from < 2) {
+        await m.addColumn(events, events.deletedAt);
+      }
+      if (from < 3) {
+        await m.addColumn(events, events.hasStartTime);
+      }
+    },
+  );
 }
 
 LazyDatabase _openConnection() {

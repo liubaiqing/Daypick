@@ -4,6 +4,8 @@ import 'package:calendar/data/db/providers.dart';
 import 'package:calendar/domain/event_source_type.dart';
 import 'package:calendar/domain/parsed_event.dart';
 import 'package:calendar/features/intake/confirm_card.dart';
+import 'package:calendar/features/event/event_form.dart';
+import 'package:calendar/domain/event_time.dart';
 import 'package:calendar/features/settings/settings_page.dart';
 import 'package:calendar/shared/design/ds_tokens.dart';
 import 'package:calendar/shared/design/dstokens_scope.dart';
@@ -19,6 +21,10 @@ void main() {
   Widget host(Widget child) => ProviderScope(
     overrides: [databaseProvider.overrideWithValue(db)],
     child: MaterialApp(
+      builder: (context, child) => DSTokensScope(
+        tokens: DSTokens.light,
+        child: Material(child: child!),
+      ),
       home: DSTokensScope(
         tokens: DSTokens.light,
         child: Scaffold(
@@ -29,6 +35,146 @@ void main() {
       ),
     ),
   );
+
+  Finder clockField(String prefix) => find.byWidgetPredicate(
+    (w) =>
+        w is TextField && (w.decoration?.hintText?.startsWith(prefix) ?? false),
+  );
+
+  testWidgets('截止时间保存与重新编辑：开始保持空，结束20:00', (tester) async {
+    final entry = DraftEntry(
+      ParsedEvent(
+        title: '奖学金申报',
+        end: DateTime(2026, 9, 19, 20),
+        sourceType: EventSourceType.text,
+        sourceText: '9月19日晚8点前完成',
+      ),
+    );
+    await tester.pumpWidget(
+      host(
+        ConfirmCard(
+          key: entry.key,
+          entry: entry,
+          onChanged: () {},
+          onDelete: () {},
+        ),
+      ),
+    );
+    expect(tester.widget<TextField>(clockField('开始')).controller!.text, '');
+    expect(
+      tester.widget<TextField>(clockField('结束／截止')).controller!.text,
+      '20:00',
+    );
+    late Event saved;
+    await tester.runAsync(() async {
+      expect(await entry.key.currentState!.saveNow(), true);
+      saved = (await db.select(db.events).get()).single;
+      expect(saved.actualStart, isNull);
+      expect(saved.hasStartTime, false);
+      expect(saved.timeLabel, '截止 20:00');
+      expect(saved.end, DateTime(2026, 9, 19, 20));
+      expect(saved.start, DateTime(2026, 9, 19));
+    });
+    await tester.pumpWidget(
+      host(
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showEventFormDialog(context, existing: saved),
+            child: const Text('打开编辑'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('打开编辑'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(clockField('开始')).controller!.text, '');
+    expect(
+      tester.widget<TextField>(clockField('结束／截止')).controller!.text,
+      '20:00',
+    );
+    await tester.tap(find.text('保存'));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    );
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      expect((await db.select(db.events).get()).single.hasStartTime, false);
+    });
+  });
+
+  for (final sample in {
+    '': '全天',
+    '9': '09:00',
+    '9.00': '09:00',
+    '9.5': '09:05',
+    '0': '00:00',
+  }.entries) {
+    testWidgets('草稿时刻输入 ${sample.key}，空结束，保存为${sample.value}', (tester) async {
+      final entry = DraftEntry(
+        ParsedEvent(
+          title: '输入测试',
+          start: DateTime(2026, 9, 19, 10),
+          sourceType: EventSourceType.text,
+          sourceText: '测试',
+        ),
+      );
+      await tester.pumpWidget(
+        host(
+          ConfirmCard(
+            key: entry.key,
+            entry: entry,
+            onChanged: () {},
+            onDelete: () {},
+          ),
+        ),
+      );
+      await tester.enterText(clockField('开始'), sample.key);
+      await tester.runAsync(() async {
+        expect(await entry.key.currentState!.saveNow(), true);
+        final row = (await db.select(db.events).get()).single;
+        expect(row.timeLabel, sample.value);
+        expect(row.allDay, sample.key.isEmpty);
+        expect(row.end, isNull);
+      });
+      await tester.pump();
+    });
+  }
+
+  testWidgets('手动新建两个时刻都空保存为全天', (tester) async {
+    await tester.pumpWidget(
+      host(
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showEventFormDialog(
+              context,
+              initialDate: DateTime(2026, 9, 19),
+            ),
+            child: const Text('打开新建'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('打开新建'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byWidgetPredicate(
+        (w) => w is TextField && w.decoration?.hintText == '标题',
+      ),
+      '全天测试',
+    );
+    expect(tester.widget<TextField>(clockField('开始')).controller!.text, '');
+    await tester.tap(find.text('保存'));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    );
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      final row = (await db.select(db.events).get()).single;
+      expect(row.allDay, true);
+      expect(row.actualStart, isNull);
+      expect(row.end, isNull);
+    });
+  });
 
   testWidgets('未知日期不默认今天且阻止保存', (tester) async {
     final entry = DraftEntry(

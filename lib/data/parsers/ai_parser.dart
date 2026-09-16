@@ -28,8 +28,11 @@ class AiParser implements EventParser {
   /// 可注入时钟便于测试。
   final DateTime Function() _now;
 
-  AiParser({required this.client, required this.config, DateTime Function()? now})
-      : _now = now ?? DateTime.now;
+  AiParser({
+    required this.client,
+    required this.config,
+    DateTime Function()? now,
+  }) : _now = now ?? DateTime.now;
 
   /// system prompt（文档 6.2 节）：要求严格按 JSON Schema 输出；
   /// **注入当前年月并规定：用户未指定年份/月份时一律使用当前年月**
@@ -41,6 +44,8 @@ class AiParser implements EventParser {
         '"end":"ISO8601或null","all_day":"布尔，无具体时刻为true",'
         '"note":"补充信息或null"}]}。规则：1)时间不确定时start为null而不是猜测；'
         '2)不输出任何JSON以外的文字；3)地点只取地名，不包含动词；'
+        '截止、最晚、某时前完成属于结束时间：填end，开始未说明则start=null且all_day=false，不得把截止填start；仅开始时刻则end=null。学年和年级不是事件年份依据。'
+        '明确表达时刻时默认24小时制：9或9.00为09:00，9.5为09:05，0为当日00:00，点号是时分分隔符。'
         '4)**用户未在文本中指定年份时，年份一律使用当前年份（${now.year}）；'
         '用户仅提供"日"（未指定年月）时，年份月份一律使用当前年月（${now.year}年${now.month}月），不得猜测其他年月**。';
   }
@@ -83,15 +88,19 @@ class AiParser implements EventParser {
     if (dt != null) {
       if (!_hasExplicitYear(sourceText) && dt.year != nowYear) {
         return DateTime(
-          nowYear, dt.month, dt.day, dt.hour, dt.minute, dt.second,
+          nowYear,
+          dt.month,
+          dt.day,
+          dt.hour,
+          dt.minute,
+          dt.second,
         );
       }
       return dt;
     }
     // 宽松解析：M-d（缺年份）→ 补当前年
-    final m = RegExp(
-      r'(\d{1,2})[月/-](\d{1,2})(?:[T\s](\d{1,2}):(\d{2}))?',
-    ).firstMatch(raw);
+    final m = RegExp(r'(\d{1,2})[月/-](\d{1,2})(?:[T\s](\d{1,2}):(\d{2}))?')
+        .firstMatch(raw);
     if (m != null) {
       final month = int.parse(m.group(1)!);
       final day = int.parse(m.group(2)!);
@@ -103,9 +112,8 @@ class AiParser implements EventParser {
       return parsed;
     }
     // 仅提供日（缺年月）→ 补当前年月（锚定整串，避免误匹配）
-    final dm = RegExp(
-      r'^(\d{1,2})(?:[T\s](\d{1,2}):(\d{2})(?::\d{2})?)?$',
-    ).firstMatch(raw);
+    final dm = RegExp(r'^(\d{1,2})(?:[T\s](\d{1,2}):(\d{2})(?::\d{2})?)?$')
+        .firstMatch(raw);
     if (dm != null) {
       final day = int.parse(dm.group(1)!);
       if (day < 1 || day > 31) return null;
@@ -119,8 +127,7 @@ class AiParser implements EventParser {
   }
 
   /// 用户文本是否含显式年份（如 2026年 / 2026- / 2026/）
-  bool _hasExplicitYear(String text) =>
-      RegExp(r'\d{4}\s*[年/-]').hasMatch(text);
+  bool _hasExplicitYear(String text) => RegExp(r'\d{4}\s*[年/-]').hasMatch(text);
 
   List<ParsedEvent> _mapToEvents(Map<String, dynamic> json, String text) {
     final rawList = json['events'];
@@ -162,7 +169,7 @@ class AiParser implements EventParser {
           sourceType: EventSourceType.text,
           sourceText: text,
           missing: {
-            if (start == null) MissingField.time,
+            if (start == null && end == null) MissingField.time,
             if (location == null || location.isEmpty) MissingField.location,
           },
           confidence: 0.9, // AI 模式默认高置信（不显示"建议核对"）

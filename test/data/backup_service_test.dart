@@ -32,6 +32,30 @@ void main() {
     );
   }
 
+  test('只有截止时间的备份恢复保持开始为空', () async {
+    final id = await dao.insertEvent(
+      EventsCompanion(
+        title: const Value('奖学金申报'),
+        start: Value(DateTime(2026, 9, 19)),
+        end: Value(DateTime(2026, 9, 19, 20)),
+        hasStartTime: const Value(false),
+        sourceType: const Value(EventSourceType.text),
+      ),
+    );
+    final backup = await service.exportJson();
+    expect(backup, contains('"has_start_time": false'));
+    await dao.deleteEvent(id);
+    expect((await service.restoreJson(backup)).restored, 1);
+    final restored = (await dao.getAll()).single;
+    expect(restored.hasStartTime, false);
+    expect(restored.end, DateTime(2026, 9, 19, 20));
+  });
+  test('v1旧备份缺少开始标记，保留旧时间语义', () async {
+    await service.restoreJson(
+      '{"app":"calendar","version":1,"events":[{"id":100,"title":"旧会议","start":"2026-09-19T09:00:00","source_type":"text"}]}',
+    );
+    expect((await dao.getAll()).single.hasStartTime, true);
+  });
   test('导出→空库恢复往返', () async {
     final id1 = await seed('事件A', DateTime(2026, 9, 1));
     final id2 = await seed('事件B', DateTime(2026, 9, 2));

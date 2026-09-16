@@ -50,6 +50,21 @@ class $EventsTable extends Events with TableInfo<$EventsTable, Event> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _hasStartTimeMeta = const VerificationMeta(
+    'hasStartTime',
+  );
+  @override
+  late final GeneratedColumn<bool> hasStartTime = GeneratedColumn<bool>(
+    'has_start_time',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("has_start_time" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
   static const VerificationMeta _endMeta = const VerificationMeta('end');
   @override
   late final GeneratedColumn<DateTime> end = GeneratedColumn<DateTime>(
@@ -142,6 +157,7 @@ class $EventsTable extends Events with TableInfo<$EventsTable, Event> {
     title,
     location,
     start,
+    hasStartTime,
     end,
     allDay,
     note,
@@ -187,6 +203,15 @@ class $EventsTable extends Events with TableInfo<$EventsTable, Event> {
       );
     } else if (isInserting) {
       context.missing(_startMeta);
+    }
+    if (data.containsKey('has_start_time')) {
+      context.handle(
+        _hasStartTimeMeta,
+        hasStartTime.isAcceptableOrUnknown(
+          data['has_start_time']!,
+          _hasStartTimeMeta,
+        ),
+      );
     }
     if (data.containsKey('end')) {
       context.handle(
@@ -255,6 +280,10 @@ class $EventsTable extends Events with TableInfo<$EventsTable, Event> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}start'],
       )!,
+      hasStartTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}has_start_time'],
+      )!,
       end: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}end'],
@@ -306,6 +335,7 @@ class Event extends DataClass implements Insertable<Event> {
   final String title;
   final String? location;
   final DateTime start;
+  final bool hasStartTime;
   final DateTime? end;
   final bool allDay;
   final String? note;
@@ -319,6 +349,7 @@ class Event extends DataClass implements Insertable<Event> {
     required this.title,
     this.location,
     required this.start,
+    required this.hasStartTime,
     this.end,
     required this.allDay,
     this.note,
@@ -337,6 +368,7 @@ class Event extends DataClass implements Insertable<Event> {
       map['location'] = Variable<String>(location);
     }
     map['start'] = Variable<DateTime>(start);
+    map['has_start_time'] = Variable<bool>(hasStartTime);
     if (!nullToAbsent || end != null) {
       map['end'] = Variable<DateTime>(end);
     }
@@ -368,6 +400,7 @@ class Event extends DataClass implements Insertable<Event> {
           ? const Value.absent()
           : Value(location),
       start: Value(start),
+      hasStartTime: Value(hasStartTime),
       end: end == null && nullToAbsent ? const Value.absent() : Value(end),
       allDay: Value(allDay),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
@@ -393,6 +426,7 @@ class Event extends DataClass implements Insertable<Event> {
       title: serializer.fromJson<String>(json['title']),
       location: serializer.fromJson<String?>(json['location']),
       start: serializer.fromJson<DateTime>(json['start']),
+      hasStartTime: serializer.fromJson<bool>(json['hasStartTime']),
       end: serializer.fromJson<DateTime?>(json['end']),
       allDay: serializer.fromJson<bool>(json['allDay']),
       note: serializer.fromJson<String?>(json['note']),
@@ -413,6 +447,7 @@ class Event extends DataClass implements Insertable<Event> {
       'title': serializer.toJson<String>(title),
       'location': serializer.toJson<String?>(location),
       'start': serializer.toJson<DateTime>(start),
+      'hasStartTime': serializer.toJson<bool>(hasStartTime),
       'end': serializer.toJson<DateTime?>(end),
       'allDay': serializer.toJson<bool>(allDay),
       'note': serializer.toJson<String?>(note),
@@ -431,6 +466,7 @@ class Event extends DataClass implements Insertable<Event> {
     String? title,
     Value<String?> location = const Value.absent(),
     DateTime? start,
+    bool? hasStartTime,
     Value<DateTime?> end = const Value.absent(),
     bool? allDay,
     Value<String?> note = const Value.absent(),
@@ -444,6 +480,7 @@ class Event extends DataClass implements Insertable<Event> {
     title: title ?? this.title,
     location: location.present ? location.value : this.location,
     start: start ?? this.start,
+    hasStartTime: hasStartTime ?? this.hasStartTime,
     end: end.present ? end.value : this.end,
     allDay: allDay ?? this.allDay,
     note: note.present ? note.value : this.note,
@@ -459,6 +496,9 @@ class Event extends DataClass implements Insertable<Event> {
       title: data.title.present ? data.title.value : this.title,
       location: data.location.present ? data.location.value : this.location,
       start: data.start.present ? data.start.value : this.start,
+      hasStartTime: data.hasStartTime.present
+          ? data.hasStartTime.value
+          : this.hasStartTime,
       end: data.end.present ? data.end.value : this.end,
       allDay: data.allDay.present ? data.allDay.value : this.allDay,
       note: data.note.present ? data.note.value : this.note,
@@ -481,6 +521,7 @@ class Event extends DataClass implements Insertable<Event> {
           ..write('title: $title, ')
           ..write('location: $location, ')
           ..write('start: $start, ')
+          ..write('hasStartTime: $hasStartTime, ')
           ..write('end: $end, ')
           ..write('allDay: $allDay, ')
           ..write('note: $note, ')
@@ -499,6 +540,7 @@ class Event extends DataClass implements Insertable<Event> {
     title,
     location,
     start,
+    hasStartTime,
     end,
     allDay,
     note,
@@ -516,6 +558,7 @@ class Event extends DataClass implements Insertable<Event> {
           other.title == this.title &&
           other.location == this.location &&
           other.start == this.start &&
+          other.hasStartTime == this.hasStartTime &&
           other.end == this.end &&
           other.allDay == this.allDay &&
           other.note == this.note &&
@@ -531,6 +574,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
   final Value<String> title;
   final Value<String?> location;
   final Value<DateTime> start;
+  final Value<bool> hasStartTime;
   final Value<DateTime?> end;
   final Value<bool> allDay;
   final Value<String?> note;
@@ -544,6 +588,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
     this.title = const Value.absent(),
     this.location = const Value.absent(),
     this.start = const Value.absent(),
+    this.hasStartTime = const Value.absent(),
     this.end = const Value.absent(),
     this.allDay = const Value.absent(),
     this.note = const Value.absent(),
@@ -558,6 +603,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
     required String title,
     this.location = const Value.absent(),
     required DateTime start,
+    this.hasStartTime = const Value.absent(),
     this.end = const Value.absent(),
     this.allDay = const Value.absent(),
     this.note = const Value.absent(),
@@ -574,6 +620,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
     Expression<String>? title,
     Expression<String>? location,
     Expression<DateTime>? start,
+    Expression<bool>? hasStartTime,
     Expression<DateTime>? end,
     Expression<bool>? allDay,
     Expression<String>? note,
@@ -588,6 +635,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
       if (title != null) 'title': title,
       if (location != null) 'location': location,
       if (start != null) 'start': start,
+      if (hasStartTime != null) 'has_start_time': hasStartTime,
       if (end != null) 'end': end,
       if (allDay != null) 'all_day': allDay,
       if (note != null) 'note': note,
@@ -604,6 +652,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
     Value<String>? title,
     Value<String?>? location,
     Value<DateTime>? start,
+    Value<bool>? hasStartTime,
     Value<DateTime?>? end,
     Value<bool>? allDay,
     Value<String?>? note,
@@ -618,6 +667,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
       title: title ?? this.title,
       location: location ?? this.location,
       start: start ?? this.start,
+      hasStartTime: hasStartTime ?? this.hasStartTime,
       end: end ?? this.end,
       allDay: allDay ?? this.allDay,
       note: note ?? this.note,
@@ -643,6 +693,9 @@ class EventsCompanion extends UpdateCompanion<Event> {
     }
     if (start.present) {
       map['start'] = Variable<DateTime>(start.value);
+    }
+    if (hasStartTime.present) {
+      map['has_start_time'] = Variable<bool>(hasStartTime.value);
     }
     if (end.present) {
       map['end'] = Variable<DateTime>(end.value);
@@ -680,6 +733,7 @@ class EventsCompanion extends UpdateCompanion<Event> {
           ..write('title: $title, ')
           ..write('location: $location, ')
           ..write('start: $start, ')
+          ..write('hasStartTime: $hasStartTime, ')
           ..write('end: $end, ')
           ..write('allDay: $allDay, ')
           ..write('note: $note, ')
@@ -915,6 +969,7 @@ typedef $$EventsTableCreateCompanionBuilder = EventsCompanion Function({
   required String title,
   Value<String?> location,
   required DateTime start,
+  Value<bool> hasStartTime,
   Value<DateTime?> end,
   Value<bool> allDay,
   Value<String?> note,
@@ -929,6 +984,7 @@ typedef $$EventsTableUpdateCompanionBuilder = EventsCompanion Function({
   Value<String> title,
   Value<String?> location,
   Value<DateTime> start,
+  Value<bool> hasStartTime,
   Value<DateTime?> end,
   Value<bool> allDay,
   Value<String?> note,
@@ -965,6 +1021,11 @@ class $$EventsTableFilterComposer
 
   ColumnFilters<DateTime> get start => $composableBuilder(
     column: $table.start,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get hasStartTime => $composableBuilder(
+    column: $table.hasStartTime,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1039,6 +1100,11 @@ class $$EventsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get hasStartTime => $composableBuilder(
+    column: $table.hasStartTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get end => $composableBuilder(
     column: $table.end,
     builder: (column) => ColumnOrderings(column),
@@ -1100,6 +1166,11 @@ class $$EventsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get start =>
       $composableBuilder(column: $table.start, builder: (column) => column);
+
+  GeneratedColumn<bool> get hasStartTime => $composableBuilder(
+    column: $table.hasStartTime,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get end =>
       $composableBuilder(column: $table.end, builder: (column) => column);
@@ -1163,6 +1234,7 @@ class $$EventsTableTableManager
                 Value<String> title = const Value.absent(),
                 Value<String?> location = const Value.absent(),
                 Value<DateTime> start = const Value.absent(),
+                Value<bool> hasStartTime = const Value.absent(),
                 Value<DateTime?> end = const Value.absent(),
                 Value<bool> allDay = const Value.absent(),
                 Value<String?> note = const Value.absent(),
@@ -1176,6 +1248,7 @@ class $$EventsTableTableManager
                 title: title,
                 location: location,
                 start: start,
+                hasStartTime: hasStartTime,
                 end: end,
                 allDay: allDay,
                 note: note,
@@ -1191,6 +1264,7 @@ class $$EventsTableTableManager
                 required String title,
                 Value<String?> location = const Value.absent(),
                 required DateTime start,
+                Value<bool> hasStartTime = const Value.absent(),
                 Value<DateTime?> end = const Value.absent(),
                 Value<bool> allDay = const Value.absent(),
                 Value<String?> note = const Value.absent(),
@@ -1204,6 +1278,7 @@ class $$EventsTableTableManager
                 title: title,
                 location: location,
                 start: start,
+                hasStartTime: hasStartTime,
                 end: end,
                 allDay: allDay,
                 note: note,

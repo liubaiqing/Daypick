@@ -12,6 +12,8 @@ class Events extends Table {
   TextColumn get title => text()();
   TextColumn get location => text().nullable()();
   DateTimeColumn get start => dateTime()();
+  // start 同时作为日历归属日期；false 表示无开始时刻，start 仅存所选日00:00。
+  BoolColumn get hasStartTime => boolean().withDefault(const Constant(true))();
   DateTimeColumn get end => dateTime().nullable()();
   BoolColumn get allDay => boolean().withDefault(const Constant(false))();
   TextColumn get note => text().nullable()();

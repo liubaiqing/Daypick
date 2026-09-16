@@ -1,6 +1,8 @@
 /// 今日待办列表（文档 10.2 节）：全天分区 + 定时分区，流式数据。
 library;
 
+import '../../domain/event_time.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -27,9 +29,6 @@ class TodayList extends ConsumerWidget {
     '星期六',
     '星期日',
   ];
-
-  String _formatTime(DateTime d) =>
-      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -81,7 +80,10 @@ class TodayList extends ConsumerWidget {
             error: (e, _) => Center(
               child: Text(
                 '加载失败：$e',
-                style: TextStyle(fontSize: kFontSizeBody, color: tokens.dangerRed),
+                style: TextStyle(
+                  fontSize: kFontSizeBody,
+                  color: tokens.dangerRed,
+                ),
               ),
             ),
             data: (list) {
@@ -109,7 +111,7 @@ class TodayList extends ConsumerWidget {
               }
               final allDay = list.where((e) => e.allDay).toList();
               final timed = list.where((e) => !e.allDay).toList()
-                ..sort((a, b) => a.start.compareTo(b.start));
+                ..sort((a, b) => a.orderingTime.compareTo(b.orderingTime));
 
               return ListView(
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -122,11 +124,7 @@ class TodayList extends ConsumerWidget {
                     if (allDay.isNotEmpty) const SizedBox(height: 10),
                     _SectionLabel(tokens: tokens, text: '定时'),
                     for (final e in timed)
-                      _EventRow(
-                        event: e,
-                        day: day,
-                        timeText: _formatTime(e.start),
-                      ),
+                      _EventRow(event: e, day: day, timeText: e.timeLabel),
                   ],
                 ],
               );
@@ -234,7 +232,7 @@ class _EventRowState extends ConsumerState<_EventRow> {
           child: Row(
             children: [
               SizedBox(
-                width: 52,
+                width: 76,
                 child: Text(
                   widget.timeText ?? '全天',
                   style: TextStyle(

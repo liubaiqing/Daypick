@@ -10,6 +10,7 @@ import 'package:drift/drift.dart' hide Column, Table;
 import '../../data/db/database.dart';
 import '../../data/db/providers.dart';
 import '../../domain/parsed_event.dart';
+import '../../domain/clock_input.dart';
 import '../../shared/design/ds_button.dart';
 import '../../shared/design/ds_date_picker.dart';
 import '../../shared/design/ds_dialog.dart';
@@ -53,8 +54,6 @@ class ConfirmCard extends ConsumerStatefulWidget {
 }
 
 class ConfirmCardState extends ConsumerState<ConfirmCard> {
-  static final RegExp _timeRe = RegExp(r'^([01]?\d|2[0-3]):([0-5]\d)$');
-
   late final TextEditingController _titleCtrl;
   late final TextEditingController _locationCtrl;
   late final TextEditingController _noteCtrl;
@@ -73,7 +72,8 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
   void initState() {
     super.initState();
     final e = widget.entry.event;
-    _date = e.start == null ? null : DateUtils.dateOnly(e.start!);
+    final anchor = e.start ?? e.end;
+    _date = anchor == null ? null : DateUtils.dateOnly(anchor);
     _endDate = e.end == null ? null : DateUtils.dateOnly(e.end!);
     _allDay = e.allDay;
     _titleCtrl = TextEditingController(text: e.title);
@@ -101,15 +101,7 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
   DateTime? _parseTime(String text, {bool end = false}) {
     final date = end ? _endDate ?? _date : _date;
     if (date == null) return null;
-    final m = _timeRe.firstMatch(text.trim());
-    if (m == null) return null;
-    return DateTime(
-      date.year,
-      date.month,
-      date.day,
-      int.parse(m.group(1)!),
-      int.parse(m.group(2)!),
-    );
+    return ClockInput.parse(text)?.on(date);
   }
 
   bool _validate() {
@@ -119,12 +111,13 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
       _startError = null;
       _endError = null;
       if (!_allDay) {
-        if (!_timeRe.hasMatch(_startCtrl.text.trim())) {
-          _startError = '格式如 09:00';
+        if (_startCtrl.text.trim().isNotEmpty &&
+            ClockInput.parse(_startCtrl.text) == null) {
+          _startError = '请输入0–23点，如9、9.05、09:05';
         }
         if (_endCtrl.text.trim().isNotEmpty &&
-            !_timeRe.hasMatch(_endCtrl.text.trim())) {
-          _endError = '格式如 10:00';
+            ClockInput.parse(_endCtrl.text) == null) {
+          _endError = '请输入0–23点，如20、20.30';
         } else {
           final s = _parseTime(_startCtrl.text.trim());
           final t = _parseTime(_endCtrl.text.trim(), end: true);
@@ -148,11 +141,15 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
     final title = _titleCtrl.text.trim();
     final location = _locationCtrl.text.trim();
     final note = _noteCtrl.text.trim();
-    final start = _allDay
+    final allDay =
+        _allDay ||
+        (_startCtrl.text.trim().isEmpty && _endCtrl.text.trim().isEmpty);
+    final specifiedStart = !allDay && _startCtrl.text.trim().isNotEmpty;
+    final start = !specifiedStart
         ? DateTime(_date!.year, _date!.month, _date!.day)
         : _parseTime(_startCtrl.text.trim());
     if (start == null) return false;
-    final end = _allDay ? null : _parseTime(_endCtrl.text.trim(), end: true);
+    final end = allDay ? null : _parseTime(_endCtrl.text.trim(), end: true);
     final source = widget.entry.event;
     setState(() => _saving = true);
     try {
@@ -161,8 +158,9 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
           title: Value(title),
           location: Value(location.isEmpty ? null : location),
           start: Value(start),
+          hasStartTime: Value(specifiedStart),
           end: Value(end),
-          allDay: Value(_allDay),
+          allDay: Value(allDay),
           note: Value(note.isEmpty ? null : note),
           sourceType: Value(source.sourceType),
           sourceText: Value(source.sourceText),
@@ -171,6 +169,9 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
       if (!mounted) return true;
       setState(() {
         _saving = false;
+        _allDay = allDay;
+        _startCtrl.text = specifiedStart ? _fmt(start) : '';
+        _endCtrl.text = end == null ? '' : _fmt(end);
         widget.entry.saved = true;
         widget.entry.savedId = id;
       });
@@ -225,7 +226,14 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
       context,
       initial: _date ?? DateTime.now(),
     );
-    if (picked != null) setState(() => _date = picked);
+    if (picked != null) {
+      setState(() {
+        if (_endDate != null && DateUtils.isSameDay(_endDate, _date)) {
+          _endDate = picked;
+        }
+        _date = picked;
+      });
+    }
   }
 
   Future<void> _pickEndDate() async {
@@ -338,7 +346,7 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
                 Expanded(
                   child: DSTextField(
                     controller: _startCtrl,
-                    hintText: '开始 09:00',
+                    hintText: '开始（可空，如9、9.05）',
                     errorText: _startError,
                   ),
                 ),
@@ -346,7 +354,7 @@ class ConfirmCardState extends ConsumerState<ConfirmCard> {
                 Expanded(
                   child: DSTextField(
                     controller: _endCtrl,
-                    hintText: '结束 10:00',
+                    hintText: '结束／截止（可空，如20）',
                     errorText: _endError,
                   ),
                 ),

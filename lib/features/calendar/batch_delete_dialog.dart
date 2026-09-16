@@ -3,6 +3,8 @@
 /// 入口：设置 → 数据管理 → "批量删除事件"。
 library;
 
+import '../../domain/event_time.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,7 +20,8 @@ import '../../shared/design/dstokens_scope.dart';
 /// 弹出批量删除窗口；返回 true 表示发生过删除。
 Future<bool?> showBatchDeleteDialog(BuildContext context) {
   final tokens = DSTokensScope.of(context);
-  final animOn = ProviderScope.containerOf(
+  final animOn =
+      ProviderScope.containerOf(
         context,
         listen: false,
       ).read(animationsEnabledProvider).value ??
@@ -190,35 +193,35 @@ class _BatchDeleteDialogBodyState extends ConsumerState<BatchDeleteDialogBody> {
           child: _loading
               ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
               : _events.isEmpty
-                  ? Center(
-                      child: Text(
-                        '这个月没有事件',
-                        style: TextStyle(
-                          fontSize: kFontSizeBody,
-                          color: tokens.textSecondary,
-                        ),
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-                      itemCount: _events.length,
-                      separatorBuilder: (_, _) =>
-                          Container(height: 1, color: tokens.divider),
-                      itemBuilder: (context, i) {
-                        final e = _events[i];
-                        return _EventRow(
-                          event: e,
-                          checked: _selected.contains(e.id),
-                          onChanged: (v) => setState(() {
-                            if (v) {
-                              _selected.add(e.id);
-                            } else {
-                              _selected.remove(e.id);
-                            }
-                          }),
-                        );
-                      },
+              ? Center(
+                  child: Text(
+                    '这个月没有事件',
+                    style: TextStyle(
+                      fontSize: kFontSizeBody,
+                      color: tokens.textSecondary,
                     ),
+                  ),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                  itemCount: _events.length,
+                  separatorBuilder: (_, _) =>
+                      Container(height: 1, color: tokens.divider),
+                  itemBuilder: (context, i) {
+                    final e = _events[i];
+                    return _EventRow(
+                      event: e,
+                      checked: _selected.contains(e.id),
+                      onChanged: (v) => setState(() {
+                        if (v) {
+                          _selected.add(e.id);
+                        } else {
+                          _selected.remove(e.id);
+                        }
+                      }),
+                    );
+                  },
+                ),
         ),
         Container(height: 1, color: tokens.divider),
         Padding(
@@ -244,8 +247,9 @@ class _BatchDeleteDialogBodyState extends ConsumerState<BatchDeleteDialogBody> {
                 key: const ValueKey('batch-delete-confirm'),
                 label: _deleting ? '删除中…' : '删除',
                 kind: DSButtonKind.destructive,
-                onPressed:
-                    _selected.isEmpty || _deleting ? null : _confirmDelete,
+                onPressed: _selected.isEmpty || _deleting
+                    ? null
+                    : _confirmDelete,
               ),
             ],
           ),
@@ -345,10 +349,7 @@ class _EventRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = DSTokensScope.of(context);
-    final time = event.allDay
-        ? '全天'
-        : '${_two(event.start.hour)}:${_two(event.start.minute)}'
-            '${event.end == null ? '' : ' – ${_two(event.end!.hour)}:${_two(event.end!.minute)}'}';
+    final time = event.timeLabel;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
@@ -407,6 +408,4 @@ class _EventRow extends StatelessWidget {
       ),
     );
   }
-
-  static String _two(int v) => v.toString().padLeft(2, '0');
 }

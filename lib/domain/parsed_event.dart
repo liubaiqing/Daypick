@@ -56,7 +56,7 @@ class ParsedEvent {
 
   /// 日期早于今天（"昨天/前天"等过去日期），UI 提示但不拦截保存
   bool isPastDate(DateTime now) {
-    final d = start;
+    final d = start ?? end;
     if (d == null) return false;
     final today = DateTime(now.year, now.month, now.day);
     return d.isBefore(today);
