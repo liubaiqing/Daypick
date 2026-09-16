@@ -35,7 +35,7 @@ class ParsedEvent {
 
   final String? note;
 
-  /// 来源：文本解析 / 图片（视觉或 OCR）/ 手动
+  /// 来源：文本解析 / 图片 / 手动（历史图片记录可能来自OCR）
   final EventSourceType sourceType;
 
   /// 该草稿对应的原始文本（确认入库时记入 sourceText）

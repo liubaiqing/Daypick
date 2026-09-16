@@ -64,6 +64,6 @@ dist/
 *.log
 ~ai-*.tmp
 
-# ---- 独立部署的大语言模型（随包 OCR ONNX 资源仍需提交）----
+# ---- 独立部署的大语言模型 ----
 *.gguf
 *.safetensors

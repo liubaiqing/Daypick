@@ -47,9 +47,6 @@ const double kWindowDefaultHeight = 720;
 const double kWindowMinWidth = 900;
 const double kWindowMinHeight = 600;
 
-// ---- OCR 预处理（见文档 7.2 节）----
-const int kOcrMaxImageDimension = 2000;
-
 // ---- LLM 网络参数（见文档 6.3 节）----
 const int kLlmConnectTimeoutMs = 10000;
 const int kLlmReceiveTimeoutMs = 30000;

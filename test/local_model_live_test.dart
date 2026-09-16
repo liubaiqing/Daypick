@@ -4,7 +4,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:calendar/data/llm/ollama_client.dart';
-import 'package:calendar/data/llm/local_image.dart';
+import 'package:calendar/data/llm/model_image.dart';
 import 'package:calendar/data/parsers/local_model_parser.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -99,7 +99,7 @@ void main() {
             input,
             image: input.path == null
                 ? null
-                : await prepareLocalImage(input.path!),
+                : await prepareModelImage(input.path!),
           ),
         );
         expect(result.errors, isEmpty);

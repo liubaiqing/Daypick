@@ -2,6 +2,7 @@
 import 'package:calendar/core/errors.dart';
 import 'package:calendar/data/llm/openai_compatible_client.dart';
 import 'package:calendar/data/parsers/ai_parser.dart';
+import 'package:calendar/domain/event_source_type.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// 可编程 fake 网关
@@ -11,6 +12,7 @@ class FakeLlmGateway implements LlmGateway {
   Map<String, dynamic> response;
   LlmException? error;
   int calls = 0;
+  List<LlmChatMessage> lastMessages = [];
 
   @override
   Future<Map<String, dynamic>> chatJson({
@@ -20,6 +22,7 @@ class FakeLlmGateway implements LlmGateway {
     required List<LlmChatMessage> messages,
   }) async {
     calls++;
+    lastMessages = messages;
     if (error != null) throw error!;
     return response;
   }
@@ -36,6 +39,58 @@ void main() {
 
   AiParser parserWith(FakeLlmGateway gateway) =>
       AiParser(client: gateway, config: config, now: () => now);
+
+  for (final text in ['', '第二张改到下午三点']) {
+    test('图片及混合输入直传、来源不含二进制、图片年份不被覆盖：$text', () async {
+      final gateway = FakeLlmGateway({
+        'events': [
+          {'title': '通知', 'start': '2027-01-02T15:00:00'},
+          {'title': '提交', 'end': '2027-01-03T20:00:00'},
+        ],
+      });
+      final images = [
+        const LlmImage(name: '通知.png', base64Png: 'first-image-data'),
+        const LlmImage(name: '附件.png', base64Png: 'second-image-data'),
+      ];
+      final events = await parserWith(gateway).parse(text, images: images);
+      expect(gateway.lastMessages.last.images, images);
+      expect(events, hasLength(2));
+      expect(events.first.start!.year, 2027);
+      expect(events.last.start, isNull);
+      expect(events.last.end!.year, 2027);
+      expect(events.first.sourceType, EventSourceType.image);
+      expect(events.first.sourceText, contains('图片1：通知.png'));
+      expect(events.first.sourceText, contains('图片2：附件.png'));
+      expect(events.first.sourceText, isNot(contains('image-data')));
+      if (text.isNotEmpty) expect(events.first.sourceText, contains(text));
+    });
+  }
+
+  test('图文归属不明确时返回澄清而非猜测草稿', () async {
+    final gateway = FakeLlmGateway({'clarification': '修改哪一张？', 'events': []});
+    await expectLater(
+      parserWith(gateway).parse(
+        '改到九点',
+        images: [const LlmImage(name: '图片.png', base64Png: 'data')],
+      ),
+      throwsA(
+        isA<AiParseException>().having(
+          (e) => e.message,
+          'message',
+          contains('请澄清'),
+        ),
+      ),
+    );
+  });
+
+  test('空输入不发请求', () async {
+    final gateway = FakeLlmGateway({});
+    await expectLater(
+      parserWith(gateway).parse(''),
+      throwsA(isA<AiParseException>()),
+    );
+    expect(gateway.calls, 0);
+  });
 
   test('合法返回 → 结构化草稿', () async {
     final gateway = FakeLlmGateway({
@@ -144,18 +199,20 @@ void main() {
 
   test('events 为空 → AiParseException', () {
     final gateway = FakeLlmGateway({'events': []});
-    expect(
-      parserWith(gateway).parse('测试'),
-      throwsA(isA<AiParseException>()),
-    );
+    expect(parserWith(gateway).parse('测试'), throwsA(isA<AiParseException>()));
   });
 
   test('客户端抛 LlmException（如 401）→ AiParseException 传递消息', () {
-    final gateway = FakeLlmGateway({})..error = const LlmException('API Key 无效，请到设置页检查');
+    final gateway = FakeLlmGateway({})
+      ..error = const LlmException('API Key 无效，请到设置页检查');
     expect(
       parserWith(gateway).parse('测试'),
       throwsA(
-        isA<AiParseException>().having((e) => e.message, 'message', contains('API Key')),
+        isA<AiParseException>().having(
+          (e) => e.message,
+          'message',
+          contains('API Key'),
+        ),
       ),
     );
   });

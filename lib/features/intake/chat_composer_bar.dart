@@ -11,16 +11,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pasteboard/pasteboard.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 
 import '../../core/constants.dart';
 import '../../core/errors.dart';
 import '../../data/db/providers.dart';
 import '../../data/llm/openai_compatible_client.dart';
-import '../../data/ocr/ocr_service.dart';
 import '../../data/parsers/ai_parser.dart';
 import '../../data/parsers/local_model_parser.dart';
 import '../../data/llm/ollama_client.dart';
-import '../../data/llm/local_image.dart';
+import '../../data/llm/model_image.dart';
 import '../../domain/parsed_event.dart';
 import '../../shared/design/ds_glass_surface.dart';
 import '../../shared/design/ds_segmented_control.dart';
@@ -38,6 +38,10 @@ class DroppedImages extends Notifier<List<String>> {
 
 final droppedImagesProvider = NotifierProvider<DroppedImages, List<String>>(
   DroppedImages.new,
+);
+
+final onlineLlmGatewayProvider = Provider<LlmGateway>(
+  (ref) => OpenAiCompatibleClient(),
 );
 
 /// 支持的图片扩展名（拖拽过滤用）
@@ -60,8 +64,6 @@ class ChatComposerBar extends ConsumerStatefulWidget {
 class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
   final TextEditingController _textCtrl = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  final OpenAiCompatibleClient _llmClient = OpenAiCompatibleClient();
-  final OcrService _ocrService = OcrService();
 
   final List<String> _attachmentPaths = [];
 
@@ -220,34 +222,23 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
         await _sendLocal(text);
         return;
       }
-      // 1. 附件 OCR + 文本合并（图文并存，OCR 文本与手输文本换行连接）
-      final parts = <String>[];
-      for (final path in _attachmentPaths) {
-        parts.add((await _ocrService.recognizeFile(path)).trim());
-      }
-      if (text.isNotEmpty) parts.add(text);
-      final combined = parts.where((p) => p.isNotEmpty).join('\n');
-      if (combined.isEmpty) {
-        setState(() => _busy = false);
-        _showError('未能从图片中识别出内容');
-        return;
-      }
-
-      // 2. 按当前模式解析
-      final events = await _parseWithAi(combined);
+      final events = await _parseWithAi(text, List.of(_attachmentPaths));
 
       // 3. 清空输入并弹出结果面板
       if (!mounted) return;
+      for (final path in _pasteTempFiles.toList()) {
+        _pasteTempFiles.remove(path);
+        File(path).delete().ignore();
+      }
       setState(() {
         _busy = false;
         _textCtrl.clear();
         _attachmentPaths.clear();
+        _retryInputs = null;
+        _retryText = null;
       });
       await showParseResultPanel(context, events);
     } on ParserException catch (e) {
-      if (mounted) setState(() => _busy = false);
-      _showError(e.message);
-    } on OcrException catch (e) {
       if (mounted) setState(() => _busy = false);
       _showError(e.message);
     } catch (e) {
@@ -296,7 +287,7 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
       (input) async {
         final image = input.path == null
             ? null
-            : await prepareLocalImage(input.path!);
+            : await prepareModelImage(input.path!);
         return parser.parse(input, image: image);
       },
       progress: (done, total) {
@@ -345,14 +336,32 @@ class _ChatComposerBarState extends ConsumerState<ChatComposerBar> {
     }
   }
 
-  Future<List<ParsedEvent>> _parseWithAi(String text) async {
+  Future<List<ParsedEvent>> _parseWithAi(
+    String text,
+    List<String> paths,
+  ) async {
     final dao = ref.read(settingsDaoProvider);
+    final gateway = ref.read(onlineLlmGatewayProvider);
     final config = AiConfig(
       baseUrl: await dao.get(kSettingLlmBaseUrl) ?? kDefaultLlmBaseUrl,
       apiKey: await dao.get(kSettingLlmApiKey) ?? '',
       model: await dao.get(kSettingLlmModel) ?? kDefaultLlmModel,
     );
-    return AiParser(client: _llmClient, config: config).parse(text);
+    final images = <LlmImage>[];
+    for (var i = 0; i < paths.length; i++) {
+      if (mounted) setState(() => _progress = '准备图片 ${i + 1}/${paths.length}…');
+      images.add(
+        LlmImage(
+          name: p.basename(paths[i]),
+          base64Png: await prepareModelImage(paths[i]),
+        ),
+      );
+    }
+    if (mounted) setState(() => _progress = 'AI 正在解析图文…');
+    return AiParser(
+      client: gateway,
+      config: config,
+    ).parse(text, images: images);
   }
 
   void _showError(String message) {

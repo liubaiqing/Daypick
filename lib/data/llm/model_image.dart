@@ -4,13 +4,16 @@ import 'dart:ui' as ui;
 
 import '../../core/errors.dart';
 
-Future<String> prepareLocalImage(String path) async {
-  final bytes = await File(path).readAsBytes();
-  final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
-  final descriptor = await ui.ImageDescriptor.encoded(buffer);
+/// 本地和在线共用：最长边2000px，首帧转PNG，不运行OCR。
+Future<String> prepareModelImage(String path) async {
+  ui.ImmutableBuffer? buffer;
+  ui.ImageDescriptor? descriptor;
   ui.Codec? codec;
   ui.Image? image;
   try {
+    final bytes = await File(path).readAsBytes();
+    buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
+    descriptor = await ui.ImageDescriptor.encoded(buffer);
     final longest = descriptor.width > descriptor.height
         ? descriptor.width
         : descriptor.height;
@@ -21,14 +24,16 @@ Future<String> prepareLocalImage(String path) async {
     );
     image = (await codec.getNextFrame()).image;
     final png = await image.toByteData(format: ui.ImageByteFormat.png);
-    if (png == null) throw const LocalParseException('图片无法解码');
+    if (png == null) throw const ImageParseException('图片无法解码');
     return base64Encode(
       png.buffer.asUint8List(png.offsetInBytes, png.lengthInBytes),
     );
+  } catch (_) {
+    throw const ImageParseException('图片无法读取或解码，请检查文件后重试');
   } finally {
     image?.dispose();
     codec?.dispose();
-    descriptor.dispose();
-    buffer.dispose();
+    descriptor?.dispose();
+    buffer?.dispose();
   }
 }

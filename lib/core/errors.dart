@@ -22,14 +22,9 @@ final class AiParseException extends ParserException {
   const AiParseException(super.message);
 }
 
-/// OCR 失败（语言包缺失 / 解码失败 / 引擎不可用）
-final class OcrException implements Exception {
-  const OcrException(this.message);
-
-  final String message;
-
-  @override
-  String toString() => 'OcrException: $message';
+/// 共享图文预处理失败。
+final class ImageParseException extends ParserException {
+  const ImageParseException(super.message);
 }
 
 /// 存储失败（保存 / 删除 / 迁移失败）

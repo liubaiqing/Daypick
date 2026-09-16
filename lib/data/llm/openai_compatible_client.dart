@@ -21,12 +21,40 @@ class LlmException implements Exception {
 
 /// 聊天消息
 class LlmChatMessage {
-  const LlmChatMessage({required this.role, required this.content});
+  const LlmChatMessage({
+    required this.role,
+    required this.content,
+    this.images = const [],
+  });
 
   final String role;
   final String content;
+  final List<LlmImage> images;
 
-  Map<String, dynamic> toJson() => {'role': role, 'content': content};
+  Map<String, dynamic> toJson() => {
+    'role': role,
+    'content': images.isEmpty
+        ? content
+        : [
+            {'type': 'text', 'text': content},
+            for (var i = 0; i < images.length; i++) ...[
+              {'type': 'text', 'text': '图片${i + 1}'},
+              {
+                'type': 'image_url',
+                'image_url': {
+                  'url': 'data:image/png;base64,${images[i].base64Png}',
+                },
+              },
+            ],
+          ],
+  };
+}
+
+/// 预处理后的图片仅随请求驻留内存；文件名用于草稿来源，不发送本机路径。
+class LlmImage {
+  const LlmImage({required this.name, required this.base64Png});
+  final String name;
+  final String base64Png;
 }
 
 /// LLM 网关抽象（便于 AiParser 测试注入 fake，文档 15.3 节）
@@ -45,8 +73,12 @@ class OpenAiCompatibleClient implements LlmGateway {
           dio ??
           Dio(
             BaseOptions(
-              connectTimeout: const Duration(milliseconds: kLlmConnectTimeoutMs),
-              receiveTimeout: const Duration(milliseconds: kLlmReceiveTimeoutMs),
+              connectTimeout: const Duration(
+                milliseconds: kLlmConnectTimeoutMs,
+              ),
+              receiveTimeout: const Duration(
+                milliseconds: kLlmReceiveTimeoutMs,
+              ),
             ),
           );
 
@@ -68,7 +100,6 @@ class OpenAiCompatibleClient implements LlmGateway {
     };
 
     Map<String, dynamic>? data;
-    Object? lastError;
     for (var attempt = 0; attempt <= kLlmRetryCount; attempt++) {
       try {
         final resp = await _dio.post<Map<String, dynamic>>(
@@ -79,7 +110,6 @@ class OpenAiCompatibleClient implements LlmGateway {
         data = resp.data;
         break;
       } on DioException catch (e) {
-        lastError = e;
         final code = e.response?.statusCode;
         if (code == 401) {
           throw const LlmException('API Key 无效，请到设置页检查');
@@ -95,14 +125,19 @@ class OpenAiCompatibleClient implements LlmGateway {
           throw const LlmException('请求过于频繁，请稍后再试');
         }
         if (code != null && code >= 400 && code < 500) {
+          if (code == 413) {
+            throw const LlmException('图文请求过大，请减少图片数量后重试');
+          }
+          if (messages.any((m) => m.images.isNotEmpty)) {
+            throw LlmException('图文请求被拒绝（HTTP $code），请检查服务地址、模型名及服务对图片格式和数量的限制');
+          }
           throw LlmException('请求被拒绝（HTTP $code），请检查 baseURL 与 Key');
         }
         if (attempt < kLlmRetryCount) {
           await Future<void>.delayed(kLlmRetryDelay);
           continue;
         }
-      } catch (e) {
-        lastError = e;
+      } catch (_) {
         if (attempt < kLlmRetryCount) {
           await Future<void>.delayed(kLlmRetryDelay);
           continue;
@@ -111,14 +146,14 @@ class OpenAiCompatibleClient implements LlmGateway {
     }
 
     if (data == null) {
-      throw LlmException('网络异常或服务超时：$lastError');
+      throw const LlmException('网络异常或服务超时，请稍后重试');
     }
     final choices = data['choices'];
     if (choices is! List || choices.isEmpty) {
       throw const LlmException('服务返回异常（无 choices）');
     }
-    final content = (choices.first as Map<String, dynamic>)['message']
-        ?['content'];
+    final content =
+        (choices.first as Map<String, dynamic>)['message']?['content'];
     if (content is! String) {
       throw const LlmException('服务返回异常（无内容）');
     }
