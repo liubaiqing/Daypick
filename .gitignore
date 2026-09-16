@@ -1,5 +1,5 @@
 # ============================================================
-# Calendar 项目 git 忽略规则
+# 拾日 Daypick 项目 git 忽略规则
 # 原则：git 只记录代码与文档；用户数据、密钥、构建产物一律不入库。
 # 说明：pubspec.lock 属于应用类项目，应提交入库（锁定依赖版本），故不在此忽略。
 # ============================================================
@@ -10,6 +10,7 @@ build/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
+coverage/
 
 # ---- Windows 桌面生成物 ----
 windows/flutter/ephemeral/
@@ -32,12 +33,21 @@ Thumbs.db
 *.sqlite-shm
 *.ics
 *.db
+*.db-*
+*.sqlite3
+*.sqlite3-*
 backups/
+calendar_backup*.json
+calendar-backup*.json
 
 # ---- 密钥与敏感配置（API Key 等）----
 .env
+.env.*
+!.env.example
 *.key
 *.pem
+*.pfx
+*.p12
 llm_key.txt
 secrets.json
 
@@ -46,3 +56,14 @@ release/
 dist/
 *.msix
 *.msixbundle
+*.zip
+*.7z
+
+# ---- 本机协作说明、日志及临时设计文件 ----
+/AGENTS.md
+*.log
+~ai-*.tmp
+
+# ---- 独立部署的大语言模型（随包 OCR ONNX 资源仍需提交）----
+*.gguf
+*.safetensors
