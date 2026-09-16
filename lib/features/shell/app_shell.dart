@@ -410,7 +410,11 @@ class _TitleBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = DSTokensScope.of(context);
     return ColoredBox(
-      color: tokens.sidebarBackground,
+      key: const ValueKey('window-titlebar-surface'),
+      // 环境背景已覆盖整个窗口；玻璃模式不再叠加独立白底或模糊层。
+      color: tokens.glassBlurSigma > 0
+          ? Colors.transparent
+          : tokens.sidebarBackground,
       child: SizedBox(
         height: 38,
         child: Row(

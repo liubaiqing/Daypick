@@ -302,6 +302,10 @@ void main() {
         DSTokensScope.of(tester.element(find.byType(AppShell)));
     expect(tokensOf().glassBlurSigma, 0);
     expect(tokensOf().mainBackground, DSTokens.light.mainBackground);
+    Color titlebarColor() => tester.widget<ColoredBox>(
+      find.byKey(const ValueKey('window-titlebar-surface')),
+    ).color;
+    expect(titlebarColor(), DSTokens.light.sidebarBackground);
     expect(
       tester.widget(find.byKey(const ValueKey('settings-section-theme'))),
       isA<Container>(),
@@ -316,6 +320,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(tokensOf().mainBackground, DSTokens.dark.mainBackground);
     expect(tokensOf().dialogBackground, DSTokens.dark.dialogBackground);
+    expect(titlebarColor(), DSTokens.dark.sidebarBackground);
     // 持久化到数据库
     expect(
       await tester.runAsync(() => SettingsDao(db).get(kSettingThemeMode)),
@@ -331,6 +336,14 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(tokensOf().glassBlurSigma, greaterThan(0));
     expect(tokensOf().textPrimary, DSTokens.glass.textPrimary);
+    expect(titlebarColor(), Colors.transparent);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('window-titlebar-surface')),
+        matching: find.byType(BackdropFilter),
+      ),
+      findsNothing,
+    );
     expect(tokensOf().accentBlue, const Color(0xFF3D7EC5));
     expect(find.byKey(const ValueKey('settings-glass-fade')), findsOneWidget);
     expect(find.byKey(const ValueKey('settings-dialog-scale')), findsNothing);
