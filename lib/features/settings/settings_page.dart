@@ -667,7 +667,7 @@ class _SettingsDialogBodyState extends ConsumerState<SettingsDialogBody> {
           surfaceKey: const ValueKey('settings-section-about'),
           title: '关于',
           child: Text(
-            'calendar v1.0.4+1 · Windows 桌面关键事务日历',
+            '$kAppName\n$kAppTagline',
             style: TextStyle(
               fontSize: kFontSizeBody,
               color: tokens.textPrimary,

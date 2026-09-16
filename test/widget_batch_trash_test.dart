@@ -280,10 +280,10 @@ void main() {
 
     await scrollSettingsTo(
       tester,
-      find.text('calendar v1.0.4+1 · Windows 桌面关键事务日历'),
+      find.text('拾日 · Daypick\n拾起琐事，安排每日。'),
     );
     expect(find.textContaining('本应用使用 HarmonyOS Sans 字体'), findsNothing);
-    expect(find.text('calendar v1.0.4+1 · Windows 桌面关键事务日历'), findsOneWidget);
+    expect(find.text('拾日 · Daypick\n拾起琐事，安排每日。'), findsOneWidget);
   });
 
   testWidgets('设置页主题三选一：切换即时生效并持久化', (tester) async {

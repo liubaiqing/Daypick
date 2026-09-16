@@ -90,11 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "dev.calendar" "\0"
-            VALUE "FileDescription", "calendar" "\0"
+            VALUE "FileDescription", "拾日 · Daypick" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "calendar" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 dev.calendar. All rights reserved." "\0"
-            VALUE "OriginalFilename", "calendar.exe" "\0"
+            VALUE "OriginalFilename", "Daypick.exe" "\0"
+            // Keep CompanyName/ProductName stable for path_provider's data path.
             VALUE "ProductName", "calendar" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END

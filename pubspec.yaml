@@ -1,5 +1,5 @@
 name: calendar
-description: "Windows 桌面端关键事务日历：文本/图片解析为结构化事件，确认后写入本地日历。技术文档见 技术开发文档.md。"
+description: "拾日 · Daypick — 拾起琐事，安排每日。轻量 Windows 事务日历，支持文字与图片解析。"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

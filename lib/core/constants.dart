@@ -2,8 +2,9 @@
 /// 对应技术开发文档第 2.2 / 4.1 / 7 / 6.3 节。
 library;
 
-/// 应用显示名（窗口标题、导出 PRODID 等统一使用）
-const String kAppName = 'calendar';
+/// 展示品牌与内部存储标识分离，改名不改变旧数据路径。
+const String kAppName = '拾日 · Daypick';
+const String kAppTagline = '拾起琐事，安排每日。';
 
 /// 数据库文件名（位于 path_provider 的 getApplicationSupportDirectory() 下）
 const String kDatabaseFileName = 'calendar.sqlite';
