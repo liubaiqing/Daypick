@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!-- Generator: Adobe Illustrator 30.6.0, SVG Export Plug-In . SVG Version: 9.03 Build 0)  -->
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 1024 1024" style="enable-background:new 0 0 1024 1024;" xml:space="preserve">
+<g id="&#x9884;&#x89C8;&#x80CC;&#x666F;_xFF08_&#x4E0D;&#x53C2;&#x4E0E;&#x5BFC;&#x51FA;_xFF09_" style="display:none;">
+</g>
+<g id="D_&#x4E3B;&#x4F53;">
+	
+		<linearGradient id="D__x2014__continuous_rounded_silhouette_00000033348199265744731670000005787989800749588404_" gradientUnits="userSpaceOnUse" x1="-8.5415" y1="574.0552" x2="900.4311" y2="574.0552" gradientTransform="matrix(0.7071 0.7071 -0.7071 0.7071 510.8284 -209.2489)">
+		<stop  offset="0" style="stop-color:#B9D3E7"/>
+		<stop  offset="0.5" style="stop-color:#729ABC"/>
+		<stop  offset="1" style="stop-color:#486D91"/>
+	</linearGradient>
+	
+		<path id="D__x2014__continuous_rounded_silhouette" style="fill:url(#D__x2014__continuous_rounded_silhouette_00000033348199265744731670000005787989800749588404_);" d="
+		M224,112h214c264,0,466,158,466,400S702,912,438,912H224c-62,0-112-50-112-112V224C112,162,162,112,224,112z M320,320v384h118
+		c160,0,258-68,258-192s-98-192-258-192H320z"/>
+</g>
+<g id="&#x5706;&#x65E5;">
+	
+		<linearGradient id="Day__x2014__lifted_sunlight_00000111183018532638406820000009606795027134474940_" gradientUnits="userSpaceOnUse" x1="398" y1="460" x2="618" y2="460" gradientTransform="matrix(0.7071 0.7071 -0.7071 0.7071 474.0589 -224.4794)">
+		<stop  offset="0" style="stop-color:#FFE1A2"/>
+		<stop  offset="0.5" style="stop-color:#F3BE70"/>
+		<stop  offset="1" style="stop-color:#E7A756"/>
+	</linearGradient>
+	
+		<circle id="Day__x2014__lifted_sunlight" style="fill:url(#Day__x2014__lifted_sunlight_00000111183018532638406820000009606795027134474940_);" cx="508" cy="460" r="110"/>
+</g>
+<g id="&#x9AD8;&#x5149;&#x4E0E;&#x6697;&#x90E8;">
+	<path id="Soft_upper-left_reflection" style="opacity:0.09;fill:#E5F0F7;" d="M170,260c0-70,27-92,82-92c48,0,128,0,194,0
+		c174,0,166,14,252,78c-83-43-118-51-252-51c-66,0-146,0-194,0c-44,0-82,55-82,105V260z"/>
+</g>
+</svg>
