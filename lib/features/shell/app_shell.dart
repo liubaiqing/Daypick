@@ -418,11 +418,14 @@ class _TitleBar extends StatelessWidget {
       child: SizedBox(
         height: 38,
         child: Row(
+          // Expanded只分配宽度；必须拉伸交叉轴，拖动区才覆盖整条标题栏。
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // 拖拽 + 双击最大化区（不含按钮）
             Expanded(
               child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
+                key: const ValueKey('window-titlebar-drag-region'),
+                behavior: HitTestBehavior.opaque,
                 onPanStart: (_) => windowManager.startDragging(),
                 onDoubleTap: () async {
                   if (await windowManager.isMaximized()) {
